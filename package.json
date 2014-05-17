@@ -1,0 +1,60 @@
+{
+  "name": "joukou-fbpp",
+  "version": "0.0.0",
+  "description": "Joukou implementation of the Flow-Based Programming network protocol (FBP protocol) based on WebSockets.",
+  "main": "dist/server.js",
+  "scripts": {
+    "test": "gulp ci",
+    "start": "gulp build && node ./dist/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/joukou/joukou-fbpp.git"
+  },
+  "author": "Joukou Ltd <team@joukou.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/joukou/joukou-flow/issues"
+  },
+  "homepage": "https://github.com/joukou/joukou-fbpp",
+  "dependencies": {
+    "joukou-data": "git://github.com/joukou/joukou-data.git#develop",
+    "jsonwebtoken": "^1.2.0",
+    "lodash": "^2.4.1",
+    "node-uuid": "^1.4.2",
+    "noflo": "^0.5.11",
+    "noflo-runtime-base": "^0.2.16",
+    "passport": "^0.2.1",
+    "passport-http-bearer": "^1.0.1",
+    "q": "1.0.1",
+    "restify": "^2.8.3",
+    "restify-cors-middleware": "0.0.4",
+    "schemajs": "^0.1.11",
+    "websocket": "^1.0.14"
+  },
+  "devDependencies": {
+    "coffee-script": "1.7.1",
+    "lazypipe": "0.2.1",
+    "gulp": "3.6.2",
+    "gulp-clean": "0.2.4",
+    "gulp-coffee": "git://github.com/joukou/gulp-coffee.git#b94c412839",
+    "gulp-coffeelint": "0.3.3",
+    "gulp-coveralls": "0.1.2",
+    "gulp-grep-stream": "0.0.2",
+    "gulp-istanbul": "0.2.0",
+    "gulp-jsdoc": "0.1.4",
+    "gulp-load-plugins": "0.5.1",
+    "gulp-mocha": "0.4.1",
+    "gulp-nodemon": "1.0.2",
+    "gulp-notify": "1.2.5",
+    "gulp-plumber": "0.6.1",
+    "gulp-sloc": "1.0.4",
+    "gulp-util": "2.2.14",
+    "gulp-watch": "0.6.4",
+    "chai": "1.9.1",
+    "chai-as-promised": "4.1.1",
+    "sinon": "1.9.1",
+    "sinon-chai": "2.5.0",
+    "rewire": "2.0.0"
+  }
+}
