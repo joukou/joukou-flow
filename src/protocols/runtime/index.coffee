@@ -18,6 +18,7 @@ pjson          = require( '../../../package.json' )
 uuid           = require( 'node-uuid' )
 Q              = require( 'q' )
 authentication = require( '../../authentication' ).bearer
+schema         = require( './schema' )
 
 ###*
 @module joukou-fbpp/protocols/runtime
@@ -29,12 +30,14 @@ class RuntimeProtocol extends BaseProtocol
   ###*
   @constructor RuntimeProtocol
   ###
-  constructor: ->
-    super('runtime')
+  constructor: ( context ) ->
+    super( 'runtime', context )
 
     @command( 'getRuntime', @getRuntime, '', 'GET' )
     @command( 'ports', @ports, 'ports', 'GET' )
     @command( 'receivePacket', @receivePacket, ':graph/packet/:port', 'PUT' )
+
+    @addCommandSchemas( schema )
 
   ###*
   @typedef  { object } getRuntimePayload
@@ -66,7 +69,11 @@ class RuntimeProtocol extends BaseProtocol
       graph: context.graph
     }
 
-    if context.authorized
+    if context.authorized and (
+      not payload.secret? or
+      # Re-authenticate
+      payload.secret is context.secret
+    )
       return runtime
 
     deferred = Q.defer()
@@ -77,6 +84,7 @@ class RuntimeProtocol extends BaseProtocol
           return deferred.reject( err )
         context.user = model
         context.authorized = yes
+        context.secret = payload.secret
         deferred.resolve( runtime )
     )
 

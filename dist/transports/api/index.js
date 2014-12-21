@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var ApiTransport, BaseTransport, MessageSchema, RuntimeContext, authenticate,
+var ApiTransport, BaseTransport, DocumentationClient, MessageSchema, PayloadClient, RuntimeContext, authenticate, _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -26,12 +26,20 @@ RuntimeContext = require('../../runtime');
 
 authenticate = require('../../authentication').authenticate;
 
+DocumentationClient = require('./documentation');
+
+PayloadClient = require('./payload');
+
+_ = require('lodash');
+
 ApiTransport = (function(_super) {
   __extends(ApiTransport, _super);
 
   function ApiTransport(server, routePrefix) {
     this.server = server;
     this.routePrefix = routePrefix != null ? routePrefix : '';
+    this.documentation = new DocumentationClient(this.server, this);
+    this.payload = new PayloadClient(this.server, this);
     this.registerRoutes();
   }
 
@@ -54,30 +62,31 @@ ApiTransport = (function(_super) {
   };
 
   ApiTransport.prototype.registerRoutes = function() {
-    var key, protocols, _results;
+    var key, prefix, protocols, _results;
     protocols = new RuntimeContext().getProtocols();
+    prefix = "" + this.routePrefix + "/protocols";
     _results = [];
     for (key in protocols) {
       if (!protocols.hasOwnProperty(key)) {
         continue;
       }
-      _results.push(this.registerProtocolRoutes(key, protocols[key]));
+      _results.push(this.registerProtocolRoutes(prefix, key, protocols[key]));
     }
     return _results;
   };
 
-  ApiTransport.prototype.registerProtocolRoutes = function(key, protocol) {
+  ApiTransport.prototype.registerProtocolRoutes = function(prefix, key, protocol) {
     var command, _i, _len, _ref, _results;
     _ref = protocol.getCommandKeys();
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       command = _ref[_i];
-      _results.push(this.registerCommandRoutes(key, protocol, command));
+      _results.push(this.registerCommandRoutes(prefix, key, protocol, command));
     }
     return _results;
   };
 
-  ApiTransport.prototype.registerCommandRoutes = function(key, protocol, command) {
+  ApiTransport.prototype.registerCommandRoutes = function(prefix, key, protocol, command) {
     var addHandler, anyHandlers, commandHandler, doAuth, map, method, methods, _i, _len;
     if (!protocol) {
       return;
@@ -114,7 +123,7 @@ ApiTransport = (function(_super) {
         if (!handler) {
           return;
         }
-        args = ["" + _this.routePrefix + "/" + key + "/" + commandHandler.route];
+        args = ["" + prefix + "/" + key + "/" + commandHandler.route];
         if (doAuth) {
           args.push(authenticate);
         }
@@ -140,7 +149,7 @@ ApiTransport = (function(_super) {
       context.user = req.user;
       context.authorized = true;
       protocol = context.getProtocol(key);
-      payload = _.cloneDeep(req.body);
+      payload = _.cloneDeep(req.body || {});
       _.assign(payload, req.params || {});
       promise = null;
       try {
@@ -162,7 +171,3 @@ ApiTransport = (function(_super) {
 })(BaseTransport);
 
 module.exports = ApiTransport;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

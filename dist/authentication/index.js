@@ -29,7 +29,3 @@ module.exports = {
     return passport.initialize();
   }
 };
-
-/*
-//# sourceMappingURL=index.js.map
-*/

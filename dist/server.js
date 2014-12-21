@@ -19,7 +19,7 @@ limitations under the License.
 @module joukou-fbpp/server
 @author Fabian Cook <fabian.cook@joukou.com>
  */
-var ApiTransport, SocketTransport, cors, restify, routes, server, transports;
+var ApiTransport, LoggerFactory, SocketTransport, cors, pjson, restify, routes, server, transports;
 
 restify = require('restify');
 
@@ -29,7 +29,18 @@ ApiTransport = require('./transports/api');
 
 SocketTransport = require('./transports/socket');
 
-server = restify.createServer();
+LoggerFactory = require('./log/LoggerFactory');
+
+pjson = require('../package.json');
+
+server = restify.createServer({
+  name: 'flow',
+  version: pjson.version,
+  log: LoggerFactory.getLogger({
+    name: 'server'
+  }),
+  acceptable: ['application/json']
+});
 
 server.pre(cors.preflight);
 
@@ -49,6 +60,16 @@ server.use(restify.bodyParser({
   mapParams: false
 }));
 
+server.on('after', restify.auditLogger({
+  log: LoggerFactory.getLogger({
+    name: 'audit'
+  })
+}));
+
+server.on('uncaughtException', function(err) {
+  return console.log(err);
+});
+
 transports = require('./index').initialize(server);
 
 routes = transports.ApiTransport.getRoutes();
@@ -63,9 +84,7 @@ for key of routes
  */
 
 server.listen(process.env.JOUKOU_API_PORT || 2101, process.env.JOUKOU_API_HOST || 'localhost', function() {
-  return console.log("socket.io server listening at " + server.url);
+  return server.log.info("" + server.name + "-" + pjson.version + " listening at " + server.url);
 });
 
-/*
-//# sourceMappingURL=server.js.map
-*/
+module.exports = server;

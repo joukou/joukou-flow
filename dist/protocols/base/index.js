@@ -57,8 +57,9 @@ BaseProtocol = (function() {
     return cls;
   };
 
-  function BaseProtocol(protocol) {
+  function BaseProtocol(protocol, context) {
     this.protocol = protocol;
+    this.context = context;
     this.filterCommands = [];
     this.commands = {};
   }
@@ -102,8 +103,8 @@ BaseProtocol = (function() {
     return deferred.promise;
   };
 
-  BaseProtocol.prototype.send = function(command, payload, context) {
-    if (!context || context.socket) {
+  BaseProtocol.prototype.send = function(command, payload) {
+    if (!this.context || this.context.socket) {
       return;
     }
     return context.send({
@@ -113,18 +114,18 @@ BaseProtocol = (function() {
     });
   };
 
-  BaseProtocol.prototype.sendAll = function(command, payload, context) {
-    if (!context || context.socket) {
+  BaseProtocol.prototype.sendAll = function(command, payload) {
+    if (!this.context || this.context.socket) {
       return;
     }
-    return context.sendAll({
+    return this.context.sendAll({
       protocol: this.protocol,
       command: command.toLowerCase(),
       payload: payload
     });
   };
 
-  BaseProtocol.prototype.receive = function(command, payload, context) {
+  BaseProtocol.prototype.receive = function(command, payload) {
     var deferred, e, handler, promise;
     deferred = Q.defer();
     handler = this.commands[command];
@@ -132,7 +133,7 @@ BaseProtocol = (function() {
       return Q.reject();
     }
     try {
-      promise = handler(payload, context);
+      promise = handler(payload, this.context);
       promise = this._resolvePromise(promise);
       promise.then(deferred.resolve).fail(deferred.reject);
     } catch (_error) {
@@ -149,14 +150,11 @@ BaseProtocol = (function() {
     }
     handler = (function(_this) {
       return function(payload, context) {
-        var form, schema, _ref;
-        schema = (_ref = _this.commandSchemasLower) != null ? _ref[name.toLowerCase()] : void 0;
-        if (!schema) {
+        var form;
+        if (!handler.hasSchema()) {
           return command.call(_this, payload, context);
         }
-        console.log(payload);
-        form = schemajs.create(schema).validate(payload);
-        console.log(form.data);
+        form = handler.validate(payload);
         if (!form.valid) {
           return Q.reject(form.errors);
         }
@@ -166,6 +164,29 @@ BaseProtocol = (function() {
     handler.command = command;
     handler.route = route;
     handler.methods = methods;
+    handler.getSchema = function() {
+      var _ref;
+      return (_ref = this.commandSchemasLower) != null ? _ref[name.toLowerCase()] : void 0;
+    };
+    handler.hasSchema = function() {
+      return !!handler.getSchema();
+    };
+    handler.validate = function(payload) {
+      var schema, _ref;
+      if (handler.$schema) {
+        return handler.$schema.validate(payload);
+      }
+      schema = (_ref = this.commandSchemasLower) != null ? _ref[name.toLowerCase()] : void 0;
+      if (!schema) {
+        return {
+          valid: true,
+          data: payload,
+          errors: []
+        };
+      }
+      handler.$schema = schemajs.create(schema);
+      return handler.$schema.validate(payload);
+    };
     this.commands[name.toLowerCase()] = handler;
     if (this[name]) {
       return this[name] = handler;
@@ -181,7 +202,3 @@ BaseProtocol = (function() {
 })();
 
 module.exports = BaseProtocol;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

@@ -40,6 +40,6 @@ module.exports =
     })
 
     return {
-      ApiTransport: new ApiTransport( restifyServer, '/fbp/protocols' )
+      ApiTransport: new ApiTransport( restifyServer, '/fbp' )
       SocketTransport: new SocketTransport( wsServer )
     }

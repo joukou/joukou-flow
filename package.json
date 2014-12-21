@@ -18,7 +18,9 @@
   },
   "homepage": "https://github.com/joukou/joukou-fbpp",
   "dependencies": {
+    "bunyan": "^1.2.3",
     "joukou-data": "git://github.com/joukou/joukou-data.git#develop",
+    "joukou-conductor-rabbitmq": "git://github.com/joukou/joukou-conductor-rabbitmq.git#v0.0.5",
     "jsonwebtoken": "^1.2.0",
     "lodash": "^2.4.1",
     "node-uuid": "^1.4.2",

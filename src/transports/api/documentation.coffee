@@ -13,19 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/protocols/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
-ComponentProtocol = require( './component' )
-GraphProtocol     = require( './graph' )
-GeneralProtocol   = require( './general' )
-NetworkProtocol   = require( './network' )
-RuntimeProtocol   = require( './runtime' )
 
-module.exports =
-  component: ComponentProtocol
-  graph: GraphProtocol
-  general: GeneralProtocol
-  network: NetworkProtocol
-  runtime: RuntimeProtocol
+class DocumentationClient
+  constructor: ( @server, @api ) ->
+
+    @registerRoutes( )
+
+  registerRoutes: ->
+
+    @server.get(
+      "#{@api.routePrefix}/documentation/routes",
+      @retrieveRoutes.bind( @ )
+    )
+
+  retrieveRoutes: ( req, res ) ->
+    res.send(
+      200,
+      @api.getRoutes( )
+    )
+
+module.exports = DocumentationClient

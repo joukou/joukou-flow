@@ -20,5 +20,8 @@ limitations under the License.
 self =
   getJWTToken: ->
     return 'abc' # TODO load from file
+  getHost: ->
+    # TODO get from api
+    return "http://localhost:2101"
 
 module.exports = self

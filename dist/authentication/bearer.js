@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Strategy, UnauthorizedError, env, generate, jwt, models, verify;
+var Q, Strategy, UnauthorizedError, decode, env, generate, jwt, models, verify;
 
 Strategy = require('passport-http-bearer').Strategy;
 
@@ -26,15 +26,11 @@ env = require('../env');
 
 models = require('joukou-data').models;
 
+Q = require('q');
+
 verify = function(token, next) {
-  if (!token) {
-    return next(new UnauthorizedError());
-  }
-  return jwt.verify(token, env.getJWTToken(), function(err, decoded) {
+  return decode(token).then(function(decoded) {
     var key;
-    if (err) {
-      return next(new UnauthorizedError());
-    }
     key = decoded.key;
     if (typeof key !== 'string') {
       return next(new UnauthorizedError());
@@ -49,7 +45,7 @@ verify = function(token, next) {
     }).fail(function() {
       return next(new UnauthorizedError());
     });
-  });
+  }).fail(next);
 };
 
 generate = function(agent, token) {
@@ -66,7 +62,23 @@ generate = function(agent, token) {
   }, env.getJWTToken());
 };
 
+decode = function(token) {
+  var deferred;
+  if (!token) {
+    return Q.reject(new UnauthorizedError());
+  }
+  deferred = Q.defer();
+  jwt.verify(token, env.getJWTToken(), function(err, decoded) {
+    if (err) {
+      return deferred.reject(new UnauthorizedError());
+    }
+    return deferred.resolve(decoded);
+  });
+  return deferred.promise;
+};
+
 module.exports = {
+  decode: decode,
   verify: verify,
   generate: generate,
   authenticate: null,
@@ -78,7 +90,3 @@ module.exports = {
     });
   }
 };
-
-/*
-//# sourceMappingURL=bearer.js.map
-*/

@@ -13,14 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-Runtime       = require( '../../runtime' )
 MessageSchema = require( '../../message/schema' )
+BaseClient    = require( '../base/client' )
 
-class SocketClient
+class SocketClient extends BaseClient
   connected: yes
   context: null
   connection: null
-  constructor: ( @connection, @context, @transport ) ->
+  constructor: ( @connection, @context ) ->
+    super( @context )
     @context.send = @send.bind( @ )
     @context.sendAll = @sendAll.bind( @ )
   receive: ( data ) ->
@@ -51,7 +52,7 @@ class SocketClient
     @connected = no
 
   sendAll: ( data ) ->
-    @transport.sendAll( data )
+    @context?.sendAll( data )
 
   send: ( data ) ->
     if not @connected

@@ -18,13 +18,11 @@ limitations under the License.
 jwt                   = require( 'jsonwebtoken' )
 env                   = require( '../env' )
 { models }            = require( 'joukou-data' )
+Q                     = require( 'q' )
 
 verify = ( token, next ) ->
-  if not token
-    return next( new UnauthorizedError() )
-  jwt.verify( token, env.getJWTToken(), ( err, decoded ) ->
-    if err
-      return next( new UnauthorizedError() )
+  decode( token )
+  .then( ( decoded ) ->
     key = decoded.key
     if typeof key isnt 'string'
       return next( new UnauthorizedError() )
@@ -43,6 +41,7 @@ verify = ( token, next ) ->
       next( new UnauthorizedError() )
     )
   )
+  .fail( next )
 
 generate = ( agent, token = null ) ->
   if (
@@ -60,8 +59,26 @@ generate = ( agent, token = null ) ->
     env.getJWTToken()
   )
 
+decode = ( token ) ->
+  if not token
+    return Q.reject(
+      new UnauthorizedError()
+    )
+  deferred = Q.defer()
+  jwt.verify( token, env.getJWTToken(), ( err, decoded ) ->
+    if err
+      return deferred.reject(
+        new UnauthorizedError()
+      )
+    deferred.resolve(
+      decoded
+    )
+  )
+  return deferred.promise
+
 
 module.exports =
+  decode: decode
   verify: verify
   generate: generate
   authenticate: null

@@ -45,12 +45,8 @@ module.exports = {
       autoAcceptConnections: false
     });
     return {
-      ApiTransport: new ApiTransport(restifyServer, '/fbp/protocols'),
+      ApiTransport: new ApiTransport(restifyServer, '/fbp'),
       SocketTransport: new SocketTransport(wsServer)
     };
   }
 };
-
-/*
-//# sourceMappingURL=index.js.map
-*/

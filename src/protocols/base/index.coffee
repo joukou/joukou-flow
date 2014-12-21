@@ -42,7 +42,7 @@ class BaseProtocol
 
     cls
 
-  constructor: (@protocol) ->
+  constructor: ( @protocol, @context ) ->
     @filterCommands = []
     @commands = {}
 
@@ -74,8 +74,8 @@ class BaseProtocol
     .fail( deferred.reject )
     return deferred.promise
 
-  send: ( command, payload, context ) ->
-    if not context or context.socket
+  send: ( command, payload ) ->
+    if not @context or @context.socket
       return
     context.send({
       protocol: @protocol
@@ -83,22 +83,22 @@ class BaseProtocol
       payload: payload
     })
 
-  sendAll: ( command, payload, context ) ->
-    if not context or context.socket
+  sendAll: ( command, payload ) ->
+    if not @context or @context.socket
       return
-    context.sendAll({
+    @context.sendAll({
       protocol: @protocol
       command: command.toLowerCase(),
       payload: payload
     })
 
-  receive: (command, payload, context) ->
+  receive: ( command, payload ) ->
     deferred = Q.defer()
     handler = @commands[command]
     if not handler
       return Q.reject( )
     try
-      promise = handler(payload, context)
+      promise = handler(payload, @context)
       promise = @_resolvePromise( promise )
       promise
       .then( deferred.resolve )
@@ -114,26 +114,17 @@ class BaseProtocol
     handler = ( payload, context ) =>
       ## Schema validation
 
-      schema = @commandSchemasLower?[ name.toLowerCase() ]
-
-      unless schema
+      unless handler.hasSchema( )
         return command.call( @, payload, context )
 
-      console.log( payload )
-
-      form = schemajs.create(
-        schema
-      ).validate(
+      form = handler.validate(
         payload
       )
-
-      console.log( form.data )
 
       if not form.valid
         return Q.reject(
           form.errors
         )
-
 
       return command.call( @, form.data, context )
 
@@ -141,6 +132,30 @@ class BaseProtocol
     handler.command = command
     handler.route = route
     handler.methods = methods
+    handler.getSchema = ->
+      return @commandSchemasLower?[ name.toLowerCase() ]
+    handler.hasSchema = ->
+      return !!handler.getSchema( )
+    handler.validate = ( payload ) ->
+      if handler.$schema
+        return handler.$schema.validate(
+          payload
+        )
+      schema = @commandSchemasLower?[ name.toLowerCase() ]
+      if not schema
+        return {
+          valid: true,
+          data: payload
+          errors: []
+        }
+      handler.$schema = schemajs.create(
+        schema
+      )
+      return handler.$schema.validate(
+        payload
+      )
+
+
 
     @commands[ name.toLowerCase() ] = handler
 

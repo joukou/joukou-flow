@@ -14,13 +14,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, NetworkProtocol, Q,
+var BaseProtocol, NetworkProtocol, Q, schema,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 BaseProtocol = require('../base');
 
 Q = require('q');
+
+schema = require('./schema');
 
 
 /**
@@ -36,8 +38,8 @@ NetworkProtocol = (function(_super) {
   @constructor NetworkProtocol
    */
 
-  function NetworkProtocol() {
-    NetworkProtocol.__super__.constructor.call(this, 'network');
+  function NetworkProtocol(context) {
+    NetworkProtocol.__super__.constructor.call(this, 'network', context);
     this.command('start', this.start, ':graph/start', 'PUT');
     this.command('getStatus', this.getStatus);
     this.command('stop', this.stop, ':graph/stop', 'PUT');
@@ -51,6 +53,7 @@ NetworkProtocol = (function(_super) {
     this.command('endGroup', this.endGroup);
     this.command('disconnect', this.disconnect);
     this.command('edges', this.edges, ':graph/edges', 'PUT');
+    this.addCommandSchemas(schema);
   }
 
 
@@ -357,7 +360,3 @@ NetworkProtocol = (function(_super) {
 })(BaseProtocol);
 
 module.exports = NetworkProtocol;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

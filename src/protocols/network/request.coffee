@@ -13,19 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/protocols/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
-ComponentProtocol = require( './component' )
-GraphProtocol     = require( './graph' )
-GeneralProtocol   = require( './general' )
-NetworkProtocol   = require( './network' )
-RuntimeProtocol   = require( './runtime' )
+env = require( '../../env' )
 
-module.exports =
-  component: ComponentProtocol
-  graph: GraphProtocol
-  general: GeneralProtocol
-  network: NetworkProtocol
-  runtime: RuntimeProtocol
+class RabbitMQRequest
+
+  constructor: ( @graph, @state, @secret, @exchange = undefined ) ->
+
+  toJSON: ->
+    ret = {
+      "_links": {
+        "joukou:graph": {
+          href: "#{env.getHost()}/fbp/protocols/graph/#{@graph}"
+        }
+      },
+      desiredState: @state,
+      secret: @secret,
+      exchange: @exchange
+    }
+    return JSON.stringify( ret )
+
+module.exports = RabbitMQRequest

@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, Q, RuntimeProtocol, authentication, pjson, uuid,
+var BaseProtocol, Q, RuntimeProtocol, authentication, pjson, schema, uuid,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -27,6 +27,8 @@ uuid = require('node-uuid');
 Q = require('q');
 
 authentication = require('../../authentication').bearer;
+
+schema = require('./schema');
 
 
 /**
@@ -44,11 +46,12 @@ RuntimeProtocol = (function(_super) {
   @constructor RuntimeProtocol
    */
 
-  function RuntimeProtocol() {
-    RuntimeProtocol.__super__.constructor.call(this, 'runtime');
+  function RuntimeProtocol(context) {
+    RuntimeProtocol.__super__.constructor.call(this, 'runtime', context);
     this.command('getRuntime', this.getRuntime, '', 'GET');
     this.command('ports', this.ports, 'ports', 'GET');
     this.command('receivePacket', this.receivePacket, ':graph/packet/:port', 'PUT');
+    this.addCommandSchemas(schema);
   }
 
 
@@ -87,7 +90,7 @@ RuntimeProtocol = (function(_super) {
       label: context.label,
       graph: context.graph
     };
-    if (context.authorized) {
+    if (context.authorized && ((payload.secret == null) || payload.secret === context.secret)) {
       return runtime;
     }
     deferred = Q.defer();
@@ -97,6 +100,7 @@ RuntimeProtocol = (function(_super) {
       }
       context.user = model;
       context.authorized = true;
+      context.secret = payload.secret;
       return deferred.resolve(runtime);
     });
     return deferred.promise;
@@ -163,7 +167,3 @@ RuntimeProtocol = (function(_super) {
 })(BaseProtocol);
 
 module.exports = RuntimeProtocol;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

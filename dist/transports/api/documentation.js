@@ -14,27 +14,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
+var DocumentationClient;
 
-/**
-@module joukou-fbpp/protocols/index
-@author Fabian Cook <fabian.cook@joukou.com>
- */
-var ComponentProtocol, GeneralProtocol, GraphProtocol, NetworkProtocol, RuntimeProtocol;
+DocumentationClient = (function() {
+  function DocumentationClient(server, api) {
+    this.server = server;
+    this.api = api;
+    this.registerRoutes();
+  }
 
-ComponentProtocol = require('./component');
+  DocumentationClient.prototype.registerRoutes = function() {
+    return this.server.get("" + this.api.routePrefix + "/documentation/routes", this.retrieveRoutes.bind(this));
+  };
 
-GraphProtocol = require('./graph');
+  DocumentationClient.prototype.retrieveRoutes = function(req, res) {
+    return res.send(200, this.api.getRoutes());
+  };
 
-GeneralProtocol = require('./general');
+  return DocumentationClient;
 
-NetworkProtocol = require('./network');
+})();
 
-RuntimeProtocol = require('./runtime');
-
-module.exports = {
-  component: ComponentProtocol,
-  graph: GraphProtocol,
-  general: GeneralProtocol,
-  network: NetworkProtocol,
-  runtime: RuntimeProtocol
-};
+module.exports = DocumentationClient;

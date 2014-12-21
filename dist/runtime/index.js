@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var ComponentLoader, Q, RuntimeContext, env, jwt, models, pjson, protocols, uuid;
+var ComponentLoader, GraphLoader, Q, RuntimeContext, authentication, env, jwt, models, pjson, protocols, uuid, _;
 
 protocols = require('../protocols');
 
@@ -32,12 +32,22 @@ pjson = require('../../package.json');
 
 ComponentLoader = require('../protocols/component/loader');
 
+GraphLoader = require('../protocols/graph/loader');
+
+authentication = require('../authentication');
+
+_ = require('lodash');
+
 RuntimeContext = (function() {
   RuntimeContext.prototype.socket = false;
 
   RuntimeContext.prototype.authorized = false;
 
+  RuntimeContext.prototype.persona = null;
+
   RuntimeContext.prototype.user = null;
+
+  RuntimeContext.prototype.secret = null;
 
   RuntimeContext.prototype.context = null;
 
@@ -45,7 +55,7 @@ RuntimeContext = (function() {
 
   RuntimeContext.prototype.version = pjson.version;
 
-  RuntimeContext.prototype.capabilities = ['protocol:runtime', 'protocol:graph', 'protocol:component', 'protocol:network', 'network:persist'];
+  RuntimeContext.prototype.capabilities = ['protocol:runtime', 'protocol:graph', 'protocol:component', 'protocol:network'];
 
   RuntimeContext.prototype.id = uuid.v4();
 
@@ -65,7 +75,11 @@ RuntimeContext = (function() {
   }
 
   RuntimeContext.prototype.getComponentLoader = function() {
-    return this.componentLoader = new ComponentLoader(this);
+    return this.componentLoader != null ? this.componentLoader : this.componentLoader = new ComponentLoader(this);
+  };
+
+  RuntimeContext.prototype.getGraphLoader = function() {
+    return this.graphLoader != null ? this.graphLoader : this.graphLoader = new GraphLoader(this);
   };
 
   RuntimeContext.prototype.getProtocols = function() {
@@ -81,7 +95,7 @@ RuntimeContext = (function() {
         continue;
       }
       protocol = protocols[key];
-      this.instances[key] = new protocol();
+      this.instances[key] = new protocol(this);
     }
     return this.instances;
   };
@@ -98,37 +112,89 @@ RuntimeContext = (function() {
     if (!type) {
       return;
     }
-    return this.instances[protocol] = new type();
+    return this.instances[protocol] = new type(this);
+  };
+
+  RuntimeContext.prototype.getPersona = function() {
+    if (this.persona) {
+      return this.persona;
+    }
+    return this.getPersonaKey().then((function(_this) {
+      return function(persona_key) {
+        var persona, _i, _len, _ref;
+        _ref = _this.personas != null;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          persona = _ref[_i];
+          if (persona.getKey() === persona_key) {
+            return persona;
+          }
+        }
+        return models.persona.retrieve(persona_key);
+      };
+    })(this));
+  };
+
+  RuntimeContext.prototype.getPersonaKey = function(useSecret) {
+    if (this.persona_key) {
+      return Q.resolve(this.persona_key);
+    }
+    if (this.secret && useSecret !== false) {
+      return authentication.bearer.decode(this.secret).then((function(_this) {
+        return function(decoded) {
+          if (!(decoded != null ? decoded.persona_key : void 0)) {
+            return _this.getPersonaKey(false);
+          }
+          return _this.persona_key = decoded.persona_key;
+        };
+      })(this));
+    }
+    return this.getPersonaKeys().then((function(_this) {
+      return function(personas) {
+        var persona;
+        persona = personas[0];
+        if (!persona) {
+          return deferred.reject('No personas');
+        }
+        return _this.persona_key = persona;
+      };
+    })(this));
+  };
+
+  RuntimeContext.prototype.getPersonaKeys = function() {
+    if (this.persona_keys) {
+      return Q.resolve(this.persona_keys);
+    }
+    return this.getPersonas().then((function(_this) {
+      return function(personas) {
+        return _this.persona_keys = _.map(personas, function(persona) {
+          return persona.getKey();
+        });
+      };
+    })(this));
   };
 
   RuntimeContext.prototype.getPersonas = function() {
-    var deferred;
     if (!this.user) {
-      deferred = Q.defer();
-      process.nextTick(function() {
-        return deferred.reject('Unauthorized');
-      });
-      return deferred.promise;
+      return Q.reject('Unauthorized');
     }
-    return models.persona.getForAgent(this.user.getKey());
+    if (this.personas) {
+      return Q.resolve(this.personas);
+    }
+    return models.persona.getForAgent(this.user.getKey()).then((function(_this) {
+      return function(personas) {
+        return _this.personas = personas;
+      };
+    })(this));
   };
 
   RuntimeContext.prototype.receive = function(protocol, command, payload) {
-    var instance, reject;
+    var instance;
     instance = this.getProtocol(protocol);
-    reject = function(reason) {
-      var deferred;
-      deferred = Q.defer();
-      process.nextTick(function() {
-        return deferred.reject(reason);
-      });
-      return deferred.promise;
-    };
     if (!instance) {
-      return reject('Unknown protocol');
+      return Q.reject('Unknown protocol');
     }
     if (!this.authorized && !(protocol === 'runtime' && command === 'getruntime' && typeof payload.secret === 'string')) {
-      return reject('Unauthorized');
+      return Q.reject('Unauthorized');
     }
     return instance.receive(command, payload, this);
   };
@@ -146,7 +212,3 @@ RuntimeContext = (function() {
 })();
 
 module.exports = RuntimeContext;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

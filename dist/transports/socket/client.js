@@ -14,23 +14,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var MessageSchema, Runtime, SocketClient;
-
-Runtime = require('../../runtime');
+var BaseClient, MessageSchema, SocketClient,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 MessageSchema = require('../../message/schema');
 
-SocketClient = (function() {
+BaseClient = require('../base/client');
+
+SocketClient = (function(_super) {
+  __extends(SocketClient, _super);
+
   SocketClient.prototype.connected = true;
 
   SocketClient.prototype.context = null;
 
   SocketClient.prototype.connection = null;
 
-  function SocketClient(connection, context, transport) {
+  function SocketClient(connection, context) {
     this.connection = connection;
     this.context = context;
-    this.transport = transport;
+    SocketClient.__super__.constructor.call(this, this.context);
     this.context.send = this.send.bind(this);
     this.context.sendAll = this.sendAll.bind(this);
   }
@@ -59,7 +63,8 @@ SocketClient = (function() {
   };
 
   SocketClient.prototype.sendAll = function(data) {
-    return this.transport.sendAll(data);
+    var _ref;
+    return (_ref = this.context) != null ? _ref.sendAll(data) : void 0;
   };
 
   SocketClient.prototype.send = function(data) {
@@ -76,10 +81,6 @@ SocketClient = (function() {
 
   return SocketClient;
 
-})();
+})(BaseClient);
 
 module.exports = SocketClient;
-
-/*
-//# sourceMappingURL=client.js.map
-*/

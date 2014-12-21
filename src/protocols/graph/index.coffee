@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ###
 BaseProtocol      = require( '../base' )
-Q                 = require( 'q' )
 { models }        = require( 'joukou-data' )
-_                 = require( 'lodash' )
-NoFlo             = require( 'noflo' )
 schema            = require( './schema' )
 
 ###*
@@ -31,10 +28,10 @@ class GraphProtocol extends BaseProtocol
   ###*
   @constructor GraphProtocol
   ###
-  constructor: ->
-    super('graph')
+  constructor: ( context ) ->
+    super( 'graph', context )
 
-    @graphs = {}
+    @loader = context.getGraphLoader( )
 
     @command( 'clear', @clear, ':id', 'PUT' )
 
@@ -76,349 +73,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { graphPayload } payload
-  @param { RuntimeContext } context
   @returns { graphPayload | Promise }
   ###
-  graph: ( payload, context ) ->
-
-    context.graph = payload.graph
-    if @graphs[payload.graph]
-      deferred = Q.defer()
-      process.nextTick( =>
-        console.log( 'from cache' )
-        deferred.resolve( @graphs[payload.graph] )
-      )
-      return deferred.promise
-    # TODO load from database
-    deferred = Q.defer()
-    @_getModelByPublicKey( payload.graph )
-    .then( ( model ) =>
-      value = model.getValue()
-
-      context.getPersonas()
-      .then( ( agentPersonas ) =>
-        any = no
-
-        # "Authorization"
-        for persona in agentPersonas
-          if _.some(value.personas, ( graphPersona ) ->
-            return graphPersona.key is persona.key
-          )
-            any = yes
-            break
-
-        if not any
-          return deferred.reject( 'Unauthorized' )
-
-        console.log( 'from model ', model.getKey() )
-
-        graph = @_joukouToNoflo(
-          model.getKey(),
-          model,
-          value
-        )
-
-        @graphs[ payload.graph ] = graph
-
-        deferred.resolve( graph )
-      )
-      .fail( deferred.reject )
-    )
-    .fail( deferred.reject )
-    return deferred.promise
-
-  _getModelByPublicKey: ( key ) ->
-    models.graph.search(
-      "public_key:#{key}",
-      yes
-    )
-
-  _getModel: ( public_key, graph ) ->
-    deferred = Q.defer()
-    if graph.properties.metadata.model
-      process.nextTick( ->
-        deferred.resolve(
-          graph.properties.metadata.model
-        )
-      )
-      return deferred.promise
-    @_getModelByPublicKey(
-      public_key
-    )
-    .then( ( model ) ->
-      deferred.resolve(
-        model
-      )
-    )
-    .fail( ->
-      models.graph.create()
-      .then( ( model ) ->
-        deferred.resolve(
-          model
-        )
-      )
-      .fail(
-        deferred.reject
-      )
-    )
-    return deferred.promise
-
-  _joukouExportedPortsToNoflo: ( obj = {} ) ->
-    ports = []
-    for key of obj
-      if not obj.hasOwnProperty( key )
-        continue
-      ports.push({
-        public: key
-        node: obj[key].process
-        port: obj[key].port
-        metadata: obj[key].metadata or {}
-      })
-    return ports
-
-  _nofloExportedPortsToJoukou: ( ports = [] ) ->
-    obj = {}
-    for val in ports
-      obj[ val.public ] = {
-        process: val.node
-        port: val.port
-        metadata: val.metadata or {}
-      }
-    return obj
-
-  _joukouNodeToNoflo: ( processes = {} ) ->
-    nodes = []
-    for key of processes
-      if not processes.hasOwnProperty( key )
-        continue
-      nodes.push({
-        id: key
-        component: processes[key].circle.key
-        metadata: processes[key].metadata or {}
-      })
-    return nodes
-
-  _nofloNodeToJoukou: ( nodes = [] ) ->
-    processes = {}
-    for val in nodes
-      processes[ val.id ] = {
-        circle:
-          key: val.component
-        metadata: val.metadata or {}
-      }
-    return processes
-
-  _joukouEdgeToNoflo: ( connections = [] ) ->
-    return _.map( connections, ( connection ) ->
-      res = {
-        data: connection.data
-        metadata: connection.metadata or {}
-      }
-      if connection.src
-        res.src = {
-          node: connection.src.process
-          port: connection.src.port
-          index: connection.src.index
-          metadata: connection.src.metadata or {}
-        }
-      if connection.tgt
-        res.tgt = {
-          node: connection.tgt.process
-          port: connection.tgt.port
-          index: connection.tgt.index
-          metadata: connection.tgt.metadata or {}
-        }
-      res.metadata.key = connection.key
-      return res
-    )
-
-  _nofloEdgeToJoukou: ( edges = [] ) ->
-    return _.map(edges, ( edge ) ->
-      res = {
-        key: edge.metadata.key
-        metadata: edge.metadata
-      }
-      res.metadata.key = undefined
-      if edge.src
-        res.src = {
-          process: edge.src.node
-          port: edge.src.port
-          index: edge.src.index
-          metadata: edge.src.metadata or {}
-        }
-      if edge.tgt
-        res.tgt = {
-          process: edge.tgt.node
-          port: edge.tgt.port
-          index: edge.tgt.index
-          metadata: edge.tgt.metadata or {}
-        }
-      res.data = edge.data
-    )
-
-  _joukouToNoflo: ( private_key, model, value ) ->
-
-    graph = new NoFlo.Graph( value.name )
-
-    inports = @_joukouExportedPortsToNoflo(
-      value.inports
-    )
-
-    for port in inports
-      graph.addInport(
-        port.public,
-        port.node,
-        port.port,
-        port.metadata
-      )
-
-    outports = @_joukouExportedPortsToNoflo(
-      value.outports
-    )
-
-    for port in outports
-      graph.addOutport(
-        port.public,
-        port.node,
-        port.port,
-        port.metadata
-      )
-
-    nodes = @_joukouNodeToNoflo(
-      value.processes
-    )
-
-    for node in nodes
-      graph.addNode(
-        node.id,
-        node.component,
-        node.metadata
-      )
-
-    edges = @_joukouEdgeToNoflo(
-      value.connections
-    )
-
-    for edge in edges
-      if edge.index?
-        graph.addEdgeIndex(
-          edge.src.node,
-          edge.src.port,
-          edge.tgt.node,
-          edge.tgt.port,
-          edge.index,
-          edge.metadata
-        )
-      else
-        graph.addEdge(
-          edge.src.node,
-          edge.src.port,
-          edge.tgt.node,
-          edge.tgt.port,
-          edge.metadata
-        )
-
-    value.properties ?= {}
-
-    graph.setProperties({
-      name: value.properties.name
-      library: value.properties.library
-      main: value.properties.main
-      icon: value.properties.icon
-      description: value.properties.description
-      metadata: {
-        dirty: no
-        new: no
-        private_key: private_key
-        model: model
-      }
-    })
-
-    return graph
-
-  _nofloToJoukou: ( public_key, graph, value = {} ) ->
-
-    value.name = graph.name
-    value.public_key = public_key
-    value.properties ?= {}
-    value.properties.name = graph.properties.name
-    value.properties.library = graph.properties.library
-    value.properties.main = graph.properties.main
-    value.properties.icon = graph.properties.icon
-    value.properties.description = graph.properties.description
-
-    value.inports = @_nofloExportedPortsToJoukou(
-      graph.inports
-    )
-    value.outports = @_nofloExportedPortsToJoukou(
-      graph.outports
-    )
-
-    value.processes = @_nofloNodeToJoukou(
-      graph.nodes
-    )
-
-    value.connections = @_nofloEdgeToJoukou(
-      graph.edges
-    )
-
-    #TODO initializers, exports, groups
-
-    return value
-
-  _saveWithModel: ( model, public_key, graph ) ->
-    value = model.getValue()
-    value = @_nofloToJoukou(
-      public_key,
-      graph,
-      value
-    )
-    model.setValue(
-      value
-    )
-    return model.save()
-
-  _save: ( payload, context ) ->
-    deferred = Q.defer()
-    keys = _.where(
-      _.keys( @graphs ),
-      ( key ) =>
-        return @graphs[ key ].properties.metadata.dirty
-    )
-    if not keys.length
-      process.nextTick( ->
-        deferred.resolve( payload )
-      )
-      return deferred.promise
-    context.getPersonas( ( personas ) =>
-      promises = _.map( keys, ( key ) =>
-        deferred = Q.defer()
-        graph = @graphs[ key ]
-        @_getModel( key, graph )
-        .then( ( model ) ->
-          return @_saveWithModel( model, key, graph )
-        )
-        .then( deferred.resolve )
-        .fail( deferred.reject )
-        return deferred.promise
-      )
-      return Q.all(
-        promises
-      )
-    )
-    .then( ->
-      deferred.resolve(
-        payload
-      )
-    )
-    .fail( ->
-      # TODO, discuss with Isaac as to whether this should be the case
-      deferred.resolve(
-        payload
-      )
-    )
-    #.fail( deferred.reject )
-    return deferred.promise
+  graph: ( payload ) ->
+    return @loader.fetchSafeGraph( payload.graph )
 
   ###*
   @typedef { object } clearPayload
@@ -431,17 +89,14 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { clearPayload } payload
-  @param { RuntimeContext } context
   @returns { clearPayload | Promise }
   ###
-  clear: ( payload, context ) ->
-
-    console.log( payload )
+  clear: ( payload ) ->
 
     unless payload.name
       payload.name = 'Joukou NoFlo runtime'
 
-    graph = new NoFlo.Graph( payload.name )
+    graph = @loader.createGraph( payload.id, payload.name )
 
     fullName = payload.id
     if payload.library
@@ -451,20 +106,13 @@ class GraphProtocol extends BaseProtocol
     if payload.description
       graph.properties.description = payload.description
 
-    graph.properties.metadata ?= {}
-    graph.properties.metadata.dirty = yes
-    graph.properties.metadata.new = not @graphs[ payload.id ]?
-
-    graph.baseDir = context.options?.baseDir
-
-    @graphs[ payload.id ] = graph
+    graph.baseDir = @context.options?.baseDir
 
     if payload.main
-      context.getProtocol( 'runtime' )
+      @context.getProtocol( 'runtime' )
       .setMainGraph( payload.main )
 
-    return @_save( graph, context )
-
+    return @loader.save( graph )
 
   ###*
   @typedef { object } addNodePayload
@@ -475,11 +123,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addNodePayload } payload
-  @param { RuntimeContext } context
   @returns { addNodePayload | Promise }
   ###
-  addNode: ( payload, context ) ->
-    @graph( payload, context )
+  addNode: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.addNode(
         payload.id,
@@ -487,7 +134,7 @@ class GraphProtocol extends BaseProtocol
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
   ###*
   @typedef { object } removeNodePayload
@@ -496,17 +143,16 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeNodePayload } payload
-  @param { RuntimeContext } context
   @returns { removeNodePayload | Promise }
   ###
-  removeNode: ( payload, context ) ->
-    @graph( payload, context )
+  removeNode: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeNode(
         payload.id
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
   ###*
   @typedef { object } renameNodePayload
@@ -516,18 +162,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { renameNodePayload } payload
-  @param { RuntimeContext } context
   @returns { renameNodePayload | Promise }
   ###
-  renameNode: ( payload, context ) ->
-    @graph( payload, context )
+  renameNode: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.renameNode(
         payload.from,
         payload.to
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -538,18 +183,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { changeNodePayload } payload
-  @param { RuntimeContext } context
   @returns { changeNodePayload | Promise }
   ###
-  changeNode: ( payload, context ) ->
-    @graph( payload, context )
+  changeNode: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.setNodeMetadata(
         payload.id,
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -568,11 +212,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addEdgePayload } payload
-  @param { RuntimeContext } context
   @returns { addEdgePayload | Promise }
   ###
-  addEdge: ( payload, context ) ->
-    @graph( payload, context )
+  addEdge: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       if payload.index?
         graph.addEdge(
@@ -592,7 +235,7 @@ class GraphProtocol extends BaseProtocol
           payload.metadata
         )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -603,11 +246,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeEdgePayload } payload
-  @param { RuntimeContext } context
   @returns { removeEdgePayload | Promise }
   ###
-  removeEdge: ( payload, context ) ->
-    @graph( payload, context )
+  removeEdge: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeEdge(
         payload.src.node,
@@ -616,7 +258,7 @@ class GraphProtocol extends BaseProtocol
         payload.tgt.port
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -628,10 +270,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { changeEdgePayload } payload
-  @param { RuntimeContext } context
+  @returns { changeEdgePayload | Promise }
   ###
-  changeEdge: ( payload, context ) ->
-    @graph( payload, context )
+  changeEdge: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.setEdgeMetadata(
         payload.src.node,
@@ -641,7 +283,7 @@ class GraphProtocol extends BaseProtocol
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -657,11 +299,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addInitialPayload } payload
-  @param { RuntimeContext } context
   @returns { addInitialPayload | Promise }
   ###
-  addInitial: ( payload, context ) ->
-    @graph( payload, context )
+  addInitial: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       if payload.tgt.index?
         graph.addInitialIndex(
@@ -679,7 +320,7 @@ class GraphProtocol extends BaseProtocol
           payload.metadata or {}
         )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -689,18 +330,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeInitialPayload } payload
-  @param { RuntimeContext } context
   @returns { removeInitialPayload | Promise }
   ###
-  removeInitial: ( payload, context ) ->
-    @graph( payload, context )
+  removeInitial: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeInitial(
         payload.tgt.node,
         payload.tgt.port
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -713,11 +353,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addInportPayload } payload
-  @param { RuntimeContext } context
   @returns { addInportPayload | Promise }
   ###
-  addInport: ( payload, context ) ->
-    @graph( payload, context )
+  addInport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.addInport(
         payload.public,
@@ -726,7 +365,7 @@ class GraphProtocol extends BaseProtocol
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -736,17 +375,16 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeInportPayload } payload
-  @param { RuntimeContext } context
   @returns { removeInportPayload | Promise }
   ###
-  removeInport: ( payload, context ) ->
-    @graph( payload, context )
+  removeInport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeInport(
         payload.public
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -757,18 +395,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { renameInportPayload } payload
-  @param { RuntimeContext } context
   @returns { renameInportPayload | Promise }
   ###
-  renameInport: ( payload, context ) ->
-    @graph( payload, context )
+  renameInport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.renameInport(
         payload.from,
         payload.to
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -781,11 +418,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addOutportPayload } payload
-  @param { RuntimeContext } context
   @returns { addOutportPayload | Promise }
   ###
-  addOutport: ( payload, context ) ->
-    @graph( payload, context )
+  addOutport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.addOutport(
         payload.public,
@@ -794,7 +430,7 @@ class GraphProtocol extends BaseProtocol
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -804,17 +440,16 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeOutportPayload } payload
-  @param { RuntimeContext } context
   @returns { removeOutportPayload | Promise }
   ###
-  removeOutport: ( payload, context ) ->
-    @graph( payload, context )
+  removeOutport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeOutport(
         payload.public
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -825,18 +460,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { renameOutportPayload } payload
-  @param { RuntimeContext } context
   @returns { renameOutportPayload | Promise }
   ###
-  renameOutport: ( payload, context ) ->
-    @graph( payload, context )
+  renameOutport: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.renameOutport(
         payload.from,
         payload.to
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -848,11 +482,10 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { addGroupPayload } payload
-  @param { RuntimeContext } context
   @returns { addGroupPayload | Promise }
   ###
-  addGroup: ( payload, context ) ->
-    @graph( payload, context )
+  addGroup: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.addGroup(
         payload.name,
@@ -860,7 +493,7 @@ class GraphProtocol extends BaseProtocol
         payload.metadata or {}
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -870,17 +503,16 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { removeGroupPayload } payload
-  @param { RuntimeContext } context
   @returns { removeGroupPayload | Promise }
   ###
-  removeGroup: ( payload, context ) ->
-    @graph( payload, context )
+  removeGroup: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.removeGroup(
         payload.name
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -891,18 +523,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { renameGroupPayload } payload
-  @param { RuntimeContext } context
   @returns { renameGroupPayload | Promise }
   ###
-  renameGroup: ( payload, context ) ->
-    @graph( payload, context )
+  renameGroup: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.renameGroup(
         payload.from,
         payload.to
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
   ###*
@@ -913,18 +544,17 @@ class GraphProtocol extends BaseProtocol
   ###
   ###*
   @param { changeGroupPayload } payload
-  @param { RuntimeContext } context
   @returns { changeGroupPayload | Promise }
   ###
-  changeGroup: ( payload, context ) ->
-    @graph( payload, context )
+  changeGroup: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
     .then( ( graph ) =>
       graph.setGroupMetadata(
         payload.name,
         payload.metadata
       )
       graph.properties.metadata.dirty = yes
-      return @_save( payload, context )
+      return @loader.save( payload )
     )
 
 module.exports = GraphProtocol

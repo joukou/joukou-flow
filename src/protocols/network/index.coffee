@@ -15,6 +15,9 @@ limitations under the License.
 ###
 BaseProtocol = require( '../base' )
 Q            = require( 'q' )
+schema       = require( './schema' )
+client       = require( './client' )
+Request      = require( './request' )
 
 ###*
 @module joukou-fbpp/protocols/network
@@ -22,11 +25,14 @@ Q            = require( 'q' )
 ###
 
 class NetworkProtocol extends BaseProtocol
+
   ###*
   @constructor NetworkProtocol
   ###
-  constructor: ->
-    super('network')
+  constructor: ( context ) ->
+    super( 'network', context )
+
+    @loader = context.getGraphLoader( )
 
     @command( 'start', @start, ':graph/start', 'PUT' )
     @command( 'getStatus', @getStatus )
@@ -45,6 +51,7 @@ class NetworkProtocol extends BaseProtocol
     @command( 'disconnect', @disconnect )
     @command( 'edges', @edges, ':graph/edges', 'PUT' )
 
+    @addCommandSchemas( schema )
 
   ###*
   @typedef { object } startPayload
@@ -55,7 +62,22 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } runtime
   @returns { startPayload | Promise }
   ###
-  start: ( payload, context ) ->
+  start: ( payload ) ->
+    @loader.fetchGraph( payload.graph )
+    .then( ( graph ) =>
+      req = new Request(
+        payload.graph,
+        @context.secret,
+        'launched'
+      )
+      client.send(
+        req
+      ).then( =>
+        ( graph.properties.network ?= {} ).state = 'launched'
+        graph.properties.metadata.dirty = yes
+        return @loader.save( payload )
+      )
+    )
 
   ###*
   @typedef { object } getStatusPayload
@@ -86,7 +108,21 @@ class NetworkProtocol extends BaseProtocol
   @returns { stopPayload | Promise }
   ###
   stop: ( payload, context ) ->
-
+    @loader.fetchGraph( payload.graph )
+    .then( ( graph ) =>
+      req = new Request(
+        payload.graph,
+        @context.secret,
+        'inactive'
+      )
+      client.send(
+        req
+      ).then( =>
+        ( graph.properties.network ?= {} ).state = 'inactive'
+        graph.properties.metadata.dirty = yes
+        return @loader.save( payload )
+      )
+    )
   ###*
   @typedef { object } startedPayload
   @property { string } graph

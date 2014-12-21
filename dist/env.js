@@ -28,7 +28,3 @@ self = {
 };
 
 module.exports = self;
-
-/*
-//# sourceMappingURL=env.js.map
-*/

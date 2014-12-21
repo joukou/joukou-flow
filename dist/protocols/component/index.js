@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, ComponentProtocol, NoFlo, Q, models, _,
+var BaseProtocol, ComponentProtocol, NoFlo, Q, models, schema, _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -27,6 +27,8 @@ _ = require('lodash');
 NoFlo = require('noflo');
 
 Q = require('q');
+
+schema = require('./schema');
 
 
 /**
@@ -42,9 +44,15 @@ ComponentProtocol = (function(_super) {
   @constructor ComponentProtocol
    */
 
-  function ComponentProtocol() {
-    ComponentProtocol.__super__.constructor.call(this, 'component');
+  function ComponentProtocol(context) {
+    ComponentProtocol.__super__.constructor.call(this, 'component', context);
+    this.loader = context.getComponentLoader();
     this.command('list', this.list, 'list', 'GET');
+
+    /*
+    !!! PLEASE NOTE THIS VALIDATES ALL PAYLOADS !!!
+     */
+    this.addCommandSchemas(schema);
   }
 
 
@@ -85,8 +93,8 @@ ComponentProtocol = (function(_super) {
   @returns { Array.<component> | Promise }
    */
 
-  ComponentProtocol.prototype.list = function(payload, context) {
-    return context.getComponentLoader().listComponents();
+  ComponentProtocol.prototype.list = function() {
+    return this.loader.listComponents();
   };
 
 
@@ -108,7 +116,6 @@ ComponentProtocol = (function(_super) {
 
   /**
   @param { getSourcePayload } payload
-  @param { RuntimeContext } context
   @returns { source | Promise }
    */
 
@@ -117,7 +124,3 @@ ComponentProtocol = (function(_super) {
 })(BaseProtocol);
 
 module.exports = ComponentProtocol;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

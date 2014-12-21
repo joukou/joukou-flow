@@ -32,7 +32,3 @@ BaseTransport = (function() {
 })();
 
 module.exports = BaseTransport;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

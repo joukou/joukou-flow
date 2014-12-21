@@ -29,7 +29,3 @@ module.exports = schemajs.create({
     type: 'string'
   }
 });
-
-/*
-//# sourceMappingURL=schema.js.map
-*/

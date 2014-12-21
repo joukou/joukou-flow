@@ -13,13 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-BaseTransport    = require( '../base' )
-MessageSchema    = require( '../../message/schema' )
-RuntimeContext   = require( '../../runtime' )
-{ authenticate } = require( '../../authentication' )
+BaseTransport       = require( '../base' )
+MessageSchema       = require( '../../message/schema' )
+RuntimeContext      = require( '../../runtime' )
+{ authenticate }    = require( '../../authentication' )
+DocumentationClient = require( './documentation' )
+PayloadClient       = require( './payload' )
+_                   = require( 'lodash' )
 
 class ApiTransport extends BaseTransport
   constructor: ( @server, @routePrefix = '' ) ->
+
+    @documentation = new DocumentationClient(
+      @server,
+      @
+    )
+    @payload = new PayloadClient(
+      @server,
+      @
+    )
+
     @registerRoutes( )
 
   getRoutes: ->
@@ -35,16 +48,17 @@ class ApiTransport extends BaseTransport
 
   registerRoutes: ->
     protocols = new RuntimeContext().getProtocols()
+    prefix = "#{@routePrefix}/protocols"
     for key of protocols
       if not protocols.hasOwnProperty( key )
         continue
-      @registerProtocolRoutes( key, protocols[key] )
+      @registerProtocolRoutes( prefix, key, protocols[key] )
 
-  registerProtocolRoutes: ( key, protocol ) ->
+  registerProtocolRoutes: ( prefix, key, protocol ) ->
     for command in protocol.getCommandKeys()
-      @registerCommandRoutes( key, protocol, command )
+      @registerCommandRoutes( prefix, key, protocol, command )
 
-  registerCommandRoutes: ( key, protocol, command ) ->
+  registerCommandRoutes: ( prefix, key, protocol, command ) ->
     if not protocol
       return
     commandHandler = protocol.getHandler( command )
@@ -80,7 +94,7 @@ class ApiTransport extends BaseTransport
         return
 
       args = [
-        "#{@routePrefix}/#{key}/#{commandHandler.route}"
+        "#{prefix}/#{key}/#{commandHandler.route}"
       ]
 
       if doAuth
@@ -102,13 +116,15 @@ class ApiTransport extends BaseTransport
 
   route: ( key, command ) ->
     return ( req, res, next ) ->
+
       context = new RuntimeContext()
+
       context.user = req.user
       context.authorized = yes
       protocol = context.getProtocol( key )
 
       payload = _.cloneDeep(
-        req.body
+        req.body or {}
       )
 
       _.assign( payload, req.params or {} )
@@ -122,6 +138,7 @@ class ApiTransport extends BaseTransport
         )
       catch err
         return next( err )
+
       promise
       .then( ( payload ) ->
         res.send(

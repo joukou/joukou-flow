@@ -13,19 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/protocols/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
-ComponentProtocol = require( './component' )
-GraphProtocol     = require( './graph' )
-GeneralProtocol   = require( './general' )
-NetworkProtocol   = require( './network' )
-RuntimeProtocol   = require( './runtime' )
+self = {
+  setPersona: {
+    persona:
+      type: 'string'
+  }
+}
 
-module.exports =
-  component: ComponentProtocol
-  graph: GraphProtocol
-  general: GeneralProtocol
-  network: NetworkProtocol
-  runtime: RuntimeProtocol
+module.exports = self

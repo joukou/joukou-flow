@@ -38,7 +38,3 @@ module.exports = cors({
   allowHeaders: ['authorization', 'accept', 'accept-version', 'content-type', 'request-id', 'origin', 'x-api-version', 'x-request-id'],
   exposeHeaders: ['api-version', 'content-length', 'content-md5', 'content-type', 'date', 'request-id', 'response-time']
 });
-
-/*
-//# sourceMappingURL=cors.js.map
-*/

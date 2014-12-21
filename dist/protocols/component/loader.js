@@ -148,7 +148,3 @@ ComponentLoader = (function() {
 })();
 
 module.exports = ComponentLoader;
-
-/*
-//# sourceMappingURL=loader.js.map
-*/

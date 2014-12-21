@@ -29,10 +29,13 @@ class ComponentProtocol extends BaseProtocol
   ###*
   @constructor ComponentProtocol
   ###
-  constructor: ->
-    super('component')
+  constructor: ( context ) ->
+    super( 'component', context )
+
+    @loader = context.getComponentLoader( )
 
     @command('list', @list, 'list', 'GET' )
+
     #@command('getSource', @getSource, 'source/:name', 'GET' )
 
     ###
@@ -68,13 +71,11 @@ class ComponentProtocol extends BaseProtocol
   @property { Array.<outPort> } outPorts
   ###
   ###*
-  @param { object } [payload={}]
-  @param { RuntimeContext } context
   @returns { Array.<component> | Promise }
   ###
-  list: ( payload, context ) ->
-    context.getComponentLoader()
-    .listComponents()
+  list: ->
+    @loader
+    .listComponents( )
 
 
 
@@ -92,10 +93,9 @@ class ComponentProtocol extends BaseProtocol
   ###
   ###*
   @param { getSourcePayload } payload
-  @param { RuntimeContext } context
   @returns { source | Promise }
   ###
-  #getSource: ( payload, context ) ->
+  #getSource: ( payload ) ->
 
 
 

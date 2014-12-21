@@ -32,8 +32,10 @@ port = {
 
 self = {
   graph: {
-    type: 'string',
-    required: true
+    graph: {
+      type: 'string',
+      required: true
+    }
   },
   clear: {
     id: {
@@ -349,7 +351,3 @@ self = {
 };
 
 module.exports = self;
-
-/*
-//# sourceMappingURL=schema.js.map
-*/

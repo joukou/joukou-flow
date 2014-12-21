@@ -75,7 +75,3 @@ SocketTransport = (function(_super) {
 })(BaseTransport);
 
 module.exports = SocketTransport;
-
-/*
-//# sourceMappingURL=index.js.map
-*/

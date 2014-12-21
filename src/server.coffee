@@ -22,8 +22,17 @@ restify         = require( 'restify' )
 cors            = require( './cors' )
 ApiTransport    = require( './transports/api' )
 SocketTransport = require( './transports/socket' )
+LoggerFactory   = require( './log/LoggerFactory' )
+pjson           = require( '../package.json' )
 
-server = restify.createServer( )
+server = restify.createServer(
+  name: 'flow'
+  version: pjson.version
+  log: LoggerFactory.getLogger( name: 'server' )
+  acceptable: [
+    'application/json'
+  ]
+)
 
 server.pre( cors.preflight )
 server.use( cors.actual )
@@ -33,6 +42,19 @@ server.use( restify.queryParser() )
 server.use( restify.jsonp() )
 server.use( restify.gzipResponse() )
 server.use( restify.bodyParser( mapParams: false ) )
+
+server.on(
+  'after',
+  restify.auditLogger(
+    log: LoggerFactory.getLogger( name: 'audit' )
+  )
+)
+
+server.on( 'uncaughtException', (err) ->
+  console.log(err)
+)
+
+
 
 transports = require( './index' ).initialize( server )
 
@@ -46,9 +68,14 @@ for key of routes
     console.log( key, val )
 ###
 
+
 server.listen(
   process.env.JOUKOU_API_PORT || 2101,
   process.env.JOUKOU_API_HOST || 'localhost',
   ->
-    console.log("socket.io server listening at #{server.url}")
+    server.log.info(
+      "#{server.name}-#{pjson.version} listening at #{server.url}"
+    )
 )
+
+module.exports = server
