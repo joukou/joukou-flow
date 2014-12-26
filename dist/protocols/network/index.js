@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, NetworkProtocol, Q, schema,
+var BaseProtocol, FleetClient, NetworkProtocol, Q, RabbitMQClient, Request, models, schema,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -23,6 +23,14 @@ BaseProtocol = require('../base');
 Q = require('q');
 
 schema = require('./schema');
+
+RabbitMQClient = require('./rabbit-client');
+
+Request = require('./request');
+
+FleetClient = require('./fleet-client');
+
+models = require('joukou-data').models;
 
 
 /**
@@ -33,6 +41,10 @@ schema = require('./schema');
 NetworkProtocol = (function(_super) {
   __extends(NetworkProtocol, _super);
 
+  NetworkProtocol.prototype.fleetClient = FleetClient;
+
+  NetworkProtocol.prototype.rabbitMQClient = RabbitMQClient;
+
 
   /**
   @constructor NetworkProtocol
@@ -40,6 +52,7 @@ NetworkProtocol = (function(_super) {
 
   function NetworkProtocol(context) {
     NetworkProtocol.__super__.constructor.call(this, 'network', context);
+    this.loader = context.getGraphLoader();
     this.command('start', this.start, ':graph/start', 'PUT');
     this.command('getStatus', this.getStatus);
     this.command('stop', this.stop, ':graph/stop', 'PUT');
@@ -69,7 +82,21 @@ NetworkProtocol = (function(_super) {
   @returns { startPayload | Promise }
    */
 
-  NetworkProtocol.prototype.start = function(payload, context) {};
+  NetworkProtocol.prototype.start = function(payload) {
+    return this.loader.fetchGraph(payload.graph).then((function(_this) {
+      return function(graph) {
+        var req, _ref;
+        req = new Request(payload.graph, _this.context.secret, 'launched', (_ref = graph.properties.metadata) != null ? _ref.private_key : void 0);
+        return client.send(req).then(function() {
+          var _base;
+          ((_base = graph.properties).network != null ? _base.network : _base.network = {}).state = 'launched';
+          graph.properties.network.startTime = new Date().getTime();
+          graph.properties.metadata.dirty = true;
+          return _this.loader.save(payload);
+        });
+      };
+    })(this));
+  };
 
 
   /**
@@ -94,7 +121,53 @@ NetworkProtocol = (function(_super) {
   @returns { status | Promise }
    */
 
-  NetworkProtocol.prototype.getStatus = function(payload, context) {};
+  NetworkProtocol.prototype.getStatus = function(payload) {
+    return this.loader.fetchGraph(payload.graph).then(function(graph) {
+      var deferred, functions, keys, model, promise, result, started, uptime, value, _ref, _ref1;
+      model = (_ref = graph.properties.metadata) != null ? _ref.model : void 0;
+      if (!model) {
+        return Q.reject('Graph does not have model');
+      }
+      value = model.getValue();
+      keys = _.keys(value.processes);
+      started = ((_ref1 = graph.properties.network) != null ? _ref1.state : void 0) === 'launched';
+      if (started) {
+        uptime = (new Date().getTime() - graph.properties.network.startTime) / 1000;
+      }
+      result = {
+        graph: payload.graph,
+        running: false,
+        started: started,
+        uptime: uptime
+      };
+      if (!keys.length) {
+        return result;
+      }
+      functions = _.map(keys, function(key) {
+        var deferred;
+        deferred = Q.defer();
+        FleetClient.getUnitStates(key).then(function(states) {
+          if (_.some(states, function(state) {
+            return state.systemdActiveState === 'active';
+          })) {
+            return deferred.resolve(true);
+          } else {
+            return deferred.reject(false);
+          }
+        }).fail(deferred.reject);
+        return deferred.promise;
+      });
+      promise = functions.reduce(Q.when, []);
+      deferred = Q.defer();
+      promise.then(function() {
+        result.running = true;
+        return deferred.resolve(result);
+      }).fail(function() {
+        return deferred.resolve(result);
+      });
+      return deferred.promise;
+    });
+  };
 
 
   /**
@@ -109,7 +182,20 @@ NetworkProtocol = (function(_super) {
   @returns { stopPayload | Promise }
    */
 
-  NetworkProtocol.prototype.stop = function(payload, context) {};
+  NetworkProtocol.prototype.stop = function(payload) {
+    return this.loader.fetchGraph(payload.graph).then((function(_this) {
+      return function(graph) {
+        var req, _ref;
+        req = new Request(payload.graph, _this.context.secret, 'inactive', (_ref = graph.properties.metadata) != null ? _ref.private_key : void 0);
+        return client.send(req).then(function() {
+          var _base;
+          ((_base = graph.properties).network != null ? _base.network : _base.network = {}).state = 'inactive';
+          graph.properties.metadata.dirty = true;
+          return _this.loader.save(payload);
+        });
+      };
+    })(this));
+  };
 
 
   /**
@@ -134,7 +220,17 @@ NetworkProtocol = (function(_super) {
   @returns { started | Promise }
    */
 
-  NetworkProtocol.prototype.started = function(payload, context) {};
+  NetworkProtocol.prototype.started = function(payload) {
+    var deferred;
+    deferred = Q.defer();
+    this.getStatus(payload).then(function(result) {
+      if (!result.started) {
+        return deferred.reject('Graph not started');
+      }
+      return deferred.resolve(result);
+    });
+    return deferred.promise;
+  };
 
 
   /**
@@ -149,8 +245,8 @@ NetworkProtocol = (function(_super) {
   @returns { status | Promise }
    */
 
-  NetworkProtocol.prototype.status = function(payload, context) {
-    return this.getStatus(payload, context);
+  NetworkProtocol.prototype.status = function(payload) {
+    return this.getStatus(payload);
   };
 
 
@@ -176,7 +272,17 @@ NetworkProtocol = (function(_super) {
   @returns { stopped | Promise }
    */
 
-  NetworkProtocol.prototype.stopped = function(payload, context) {};
+  NetworkProtocol.prototype.stopped = function(payload) {
+    var deferred;
+    deferred = Q.defer();
+    this.getStatus(payload).then(function(result) {
+      if (result.started) {
+        return deferred.reject('Graph not stopped');
+      }
+      return deferred.resolve(result);
+    });
+    return deferred.promise;
+  };
 
 
   /**
@@ -192,7 +298,7 @@ NetworkProtocol = (function(_super) {
   @returns { debugPayload | Promise }
    */
 
-  NetworkProtocol.prototype.debug = function(payload, context) {
+  NetworkProtocol.prototype.debug = function(payload) {
     return Q.reject();
   };
 
@@ -200,7 +306,7 @@ NetworkProtocol = (function(_super) {
   /**
   @typedef { object } iconPayload
   @property { string } id
-  @property { string } icon
+  @property { string } [icon=undefined]
   @property { string } graph
    */
 
@@ -211,7 +317,20 @@ NetworkProtocol = (function(_super) {
   @returns { iconPayload | Promise }
    */
 
-  NetworkProtocol.prototype.icon = function(payload, context) {};
+  NetworkProtocol.prototype.icon = function(payload) {
+    if (payload.icon) {
+      return Q.reject('Not implemented');
+    }
+    return this.loader.fetchGraph(payload.graph).then(function(graph) {
+      var node;
+      node = graph.getNode(payload.id);
+      return models.circle.retrieve(node.component).then(function(circle) {
+        var value;
+        value = circle.getValue();
+        return value.icon;
+      });
+    });
+  };
 
 
   /**
@@ -259,7 +378,7 @@ NetworkProtocol = (function(_super) {
   @returns { connectPayload | Promise }
    */
 
-  NetworkProtocol.prototype.connect = function(payload, context) {};
+  NetworkProtocol.prototype.connect = function(payload) {};
 
 
   /**

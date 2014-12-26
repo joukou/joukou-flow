@@ -20,10 +20,14 @@ class RabbitMQRequest
   constructor: ( @graph, @state, @secret, @exchange = undefined ) ->
 
   toJSON: ->
+    if @graph.getKey instanceof Function
+      key = @graph.getKey()
+    if @graph.properties?.metadata?.private_key
+      key = @graph.properties.metadata.private_key
     ret = {
       "_links": {
         "joukou:graph": {
-          href: "#{env.getHost()}/fbp/protocols/graph/#{@graph}"
+          href: "#{env.getHost()}/fbp/protocols/graph/#{key}"
         }
       },
       desiredState: @state,

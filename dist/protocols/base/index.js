@@ -107,7 +107,7 @@ BaseProtocol = (function() {
     if (!this.context || this.context.socket) {
       return;
     }
-    return context.send({
+    return this.context.send({
       protocol: this.protocol,
       command: command.toLowerCase(),
       payload: payload

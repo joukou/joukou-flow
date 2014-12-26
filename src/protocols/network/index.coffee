@@ -13,11 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-BaseProtocol = require( '../base' )
-Q            = require( 'q' )
-schema       = require( './schema' )
-client       = require( './client' )
-Request      = require( './request' )
+BaseProtocol   = require( '../base' )
+Q              = require( 'q' )
+schema         = require( './schema' )
+RabbitMQClient = require( './rabbit-client' )
+Request        = require( './fleet-request' )
+FleetClient    = require( './fleet-client' )
+{ models }     = require( 'joukou-data' )
 
 ###*
 @module joukou-fbpp/protocols/network
@@ -26,13 +28,16 @@ Request      = require( './request' )
 
 class NetworkProtocol extends BaseProtocol
 
+  fleetClient: FleetClient
+  rabbitMQClient: RabbitMQClient
+
   ###*
   @constructor NetworkProtocol
   ###
   constructor: ( context ) ->
     super( 'network', context )
 
-    @loader = context.getGraphLoader( )
+    @loader = context.getNetworkLoader( )
 
     @command( 'start', @start, ':graph/start', 'PUT' )
     @command( 'getStatus', @getStatus )
@@ -63,20 +68,9 @@ class NetworkProtocol extends BaseProtocol
   @returns { startPayload | Promise }
   ###
   start: ( payload ) ->
-    @loader.fetchGraph( payload.graph )
-    .then( ( graph ) =>
-      req = new Request(
-        payload.graph,
-        @context.secret,
-        'launched'
-      )
-      client.send(
-        req
-      ).then( =>
-        ( graph.properties.network ?= {} ).state = 'launched'
-        graph.properties.metadata.dirty = yes
-        return @loader.save( payload )
-      )
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) =>
+      return network.start( )
     )
 
   ###*
@@ -96,7 +90,12 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { status | Promise }
   ###
-  getStatus: ( payload, context ) ->
+  getStatus: ( payload ) ->
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) ->
+      return network.getStatus( )
+    )
+
 
   ###*
   @typedef { object } stopPayload
@@ -107,22 +106,12 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { stopPayload | Promise }
   ###
-  stop: ( payload, context ) ->
-    @loader.fetchGraph( payload.graph )
-    .then( ( graph ) =>
-      req = new Request(
-        payload.graph,
-        @context.secret,
-        'inactive'
-      )
-      client.send(
-        req
-      ).then( =>
-        ( graph.properties.network ?= {} ).state = 'inactive'
-        graph.properties.metadata.dirty = yes
-        return @loader.save( payload )
-      )
+  stop: ( payload ) ->
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) =>
+      return network.stop( )
     )
+
   ###*
   @typedef { object } startedPayload
   @property { string } graph
@@ -140,7 +129,19 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { started | Promise }
   ###
-  started: ( payload, context ) ->
+  started: ( payload ) ->
+    deferred = Q.defer()
+    @getStatus( payload )
+    .then( ( result ) ->
+      if not result.started
+        return deferred.reject(
+          'Graph not started'
+        )
+      return deferred.resolve(
+        result
+      )
+    )
+    return deferred.promise
 
   ###*
   @typedef { object } statusPayload
@@ -151,8 +152,8 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { status | Promise }
   ###
-  status: ( payload, context ) ->
-    return @getStatus( payload, context )
+  status: ( payload ) ->
+    return @getStatus( payload )
 
   ###*
   @typedef { object } stoppedPayload
@@ -171,7 +172,19 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { stopped | Promise }
   ###
-  stopped: ( payload, context ) ->
+  stopped: ( payload ) ->
+    deferred = Q.defer()
+    @getStatus( payload )
+    .then( ( result ) ->
+      if result.started
+        return deferred.reject(
+          'Graph not stopped'
+        )
+      return deferred.resolve(
+        result
+      )
+    )
+    return deferred.promise
 
   ###*
   @typedef { object } debugPayload
@@ -183,13 +196,13 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { debugPayload | Promise }
   ###
-  debug: ( payload, context ) ->
+  debug: ( payload ) ->
     return Q.reject( )
 
   ###*
   @typedef { object } iconPayload
   @property { string } id
-  @property { string } icon
+  @property { string } [icon=undefined]
   @property { string } graph
   ###
   ###*
@@ -197,7 +210,14 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { iconPayload | Promise }
   ###
-  icon: ( payload, context ) ->
+  icon: ( payload ) ->
+    if payload.icon
+      return Q.reject( 'Not implemented' )
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) ->
+      return network.getIcon( payload.id )
+    )
+
 
   ###*
   @typedef { object } output
@@ -236,7 +256,8 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { connectPayload | Promise }
   ###
-  connect: ( payload, context ) ->
+  connect: ( payload ) ->
+
 
   ###*
   @typedef { object } beginGroupPayload

@@ -21,6 +21,14 @@ limitations under the License.
  */
 var ApiTransport, LoggerFactory, SocketTransport, cors, pjson, restify, routes, server, transports;
 
+if (!process.env["JOUKOU_FLEET_API_HOST"]) {
+  process.env["JOUKOU_FLEET_API_HOST"] = 'http://localhost:4001';
+}
+
+if (!process.env["JOUKOU_FLEET_API_PATH"]) {
+  process.env["JOUKOU_FLEET_API_PATH"] = "/v1/";
+}
+
 restify = require('restify');
 
 cors = require('./cors');
@@ -87,4 +95,7 @@ server.listen(process.env.JOUKOU_API_PORT || 2101, process.env.JOUKOU_API_HOST |
   return server.log.info("" + server.name + "-" + pjson.version + " listening at " + server.url);
 });
 
-module.exports = server;
+module.exports = {
+  server: server,
+  transports: transports
+};

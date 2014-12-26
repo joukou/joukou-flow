@@ -77,7 +77,7 @@ class BaseProtocol
   send: ( command, payload ) ->
     if not @context or @context.socket
       return
-    context.send({
+    @context.send({
       protocol: @protocol
       command: command.toLowerCase()
       payload: payload

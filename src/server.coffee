@@ -18,6 +18,13 @@ limitations under the License.
 @author Fabian Cook <fabian.cook@joukou.com>
 ###
 # Standalone module
+
+unless process.env["JOUKOU_FLEET_API_HOST"]
+  process.env["JOUKOU_FLEET_API_HOST"] = 'http://localhost:4001'
+unless process.env["JOUKOU_FLEET_API_PATH"]
+  process.env["JOUKOU_FLEET_API_PATH"] = "/v1/"
+
+
 restify         = require( 'restify' )
 cors            = require( './cors' )
 ApiTransport    = require( './transports/api' )
@@ -78,4 +85,7 @@ server.listen(
     )
 )
 
-module.exports = server
+module.exports = {
+  server: server
+  transports: transports
+}
