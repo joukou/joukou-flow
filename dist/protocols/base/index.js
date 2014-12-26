@@ -105,7 +105,7 @@ BaseProtocol = (function() {
 
   BaseProtocol.prototype.send = function(command, payload) {
     if (!this.context || this.context.socket) {
-      return;
+      return Q.resolve();
     }
     return this.context.send({
       protocol: this.protocol,

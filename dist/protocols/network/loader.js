@@ -14,7 +14,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var NetworkLoader;
+var Network, NetworkLoader;
+
+Network = require('./network');
 
 NetworkLoader = (function() {
   function NetworkLoader(context, loader) {
@@ -28,10 +30,11 @@ NetworkLoader = (function() {
   };
 
   NetworkLoader.prototype.fetchNetwork = function(id) {
-    return this.fetchGraph(id).then(function(graph) {
-      var _base;
-      return (_base = graph.properties).network != null ? _base.network : _base.network = {};
-    });
+    return this.fetchGraph(id).then((function(_this) {
+      return function(graph) {
+        return new Network(_this.context, graph);
+      };
+    })(this));
   };
 
   NetworkLoader.prototype.save = function() {

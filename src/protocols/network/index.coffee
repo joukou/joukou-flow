@@ -26,6 +26,8 @@ FleetClient    = require( './fleet-client' )
 @author Fabian Cook <fabian.cook@joukou.com>
 ###
 
+
+
 class NetworkProtocol extends BaseProtocol
 
   fleetClient: FleetClient
@@ -38,6 +40,8 @@ class NetworkProtocol extends BaseProtocol
     super( 'network', context )
 
     @loader = context.getNetworkLoader( )
+
+    @subscriptions = {}
 
     @command( 'start', @start, ':graph/start', 'PUT' )
     @command( 'getStatus', @getStatus )
@@ -58,6 +62,35 @@ class NetworkProtocol extends BaseProtocol
 
     @addCommandSchemas( schema )
 
+  subscribeNetwork: ( network ) ->
+    if @subscriptions[ network.id ]
+      return
+    @subscriptions[ network.id ] = yes
+    forward = ( event ) =>
+      network.on( event, ( data ) =>
+        # So we can change networks without making a new socket
+        if not @subscriptions[ network.id ]
+          return
+        while event.indexOf( '-' ) isnt -1
+          # https://github.com/noflo/noflo-runtime-base/blob/master/src/protocol/Network.coffee#L163
+          event = event.replace( '-', '' )
+        @send( event, data )
+      )
+    forward( 'started' )
+    forward( 'stopped' )
+    forward( 'status' )
+    forward( 'data' )
+    forward( 'error' )
+    forward( 'process-error' )
+    forward( 'icon' )
+
+  unsubscribeNetwork: ( network ) ->
+    if not @subscriptions[ network.id ]
+      return
+    @subscriptions[ network.id ] = undefined
+
+
+
   ###*
   @typedef { object } startPayload
   @property { string } graph
@@ -69,8 +102,11 @@ class NetworkProtocol extends BaseProtocol
   ###
   start: ( payload ) ->
     @loader.fetchNetwork( payload.graph )
-    .then( ( network ) =>
+    .then( ( network ) ->
       return network.start( )
+      .then( ->
+        return payload
+      )
     )
 
   ###*
@@ -108,8 +144,11 @@ class NetworkProtocol extends BaseProtocol
   ###
   stop: ( payload ) ->
     @loader.fetchNetwork( payload.graph )
-    .then( ( network ) =>
+    .then( ( network ) ->
       return network.stop( )
+      .then( ->
+        return payload
+      )
     )
 
   ###*
@@ -257,6 +296,10 @@ class NetworkProtocol extends BaseProtocol
   @returns { connectPayload | Promise }
   ###
   connect: ( payload ) ->
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) ->
+      network.connect( payload.id, payload.src, payload.tgt, payload.subgraph )
+    )
 
 
   ###*
@@ -274,7 +317,10 @@ class NetworkProtocol extends BaseProtocol
   @returns { beginGroupPayload | Promise }
   ###
   beginGroup: ( payload, context ) ->
-
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) ->
+      network.connect( payload.id, payload.src, payload.tgt, payload.subgraph )
+    )
   ###*
   @typedef { object } data
   @property { string } id

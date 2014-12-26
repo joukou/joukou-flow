@@ -59,7 +59,12 @@ class GraphLoader
     if @graphs[ id ]
       return Q.resolve( @graphs[ id ] )
 
-    method = if validator.isUUID( id ) then '_getModelByPrivateKey' else '_getModelByPublicKey'
+    model = undefined
+    # To long if using if/then/else. Meh
+    if validator.isUUID( id )
+      model = '_getModelByPrivateKey'
+    else
+      model = '_getModelByPublicKey'
 
     deferred = Q.defer()
     @[ method ]( id )

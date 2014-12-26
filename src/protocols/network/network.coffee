@@ -60,7 +60,7 @@ class Network
     ).then( =>
       @network.state = 'launched'
       @network.startTime = new Date( ).getTime( )
-      return @loader.save( payload )
+      return @loader.save( )
     )
 
   stop: ->
@@ -75,13 +75,15 @@ class Network
     ).then( =>
       @graph.properties.network.state = 'inactive'
       @graph.properties.metadata.dirty = yes
-      return @loader.save( payload )
+      return @loader.save( )
     )
 
   isStarted: ->
     return @network.state is 'launched'
 
   isRunning: ->
+    # Joukou networks are running when all the nodes are activated.
+    # Rather than noflo's where there just needs to be a connection
     unless @isStarted( )
       return Q.resolve( false )
     return @getStatus( )
@@ -100,9 +102,9 @@ class Network
     started = @graph.properties.network.state is 'launched'
     if started
       uptime = (
-          new Date( ).getTime( ) -
-            @graph.properties.network.startTime
-        ) / 1000
+        new Date( ).getTime( ) -
+        @graph.properties.network.startTime
+      ) / 1000
     result = {
       graph: @graph.properties.private_key,
       running: no,
@@ -161,5 +163,9 @@ class Network
       value = circle.getValue()
       return value.icon
     )
+
+  connect: ( id, src, tgt, subgraph ) ->
+
+
 
 module.exports = Network

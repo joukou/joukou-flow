@@ -26,7 +26,7 @@ schema = require('./schema');
 
 RabbitMQClient = require('./rabbit-client');
 
-Request = require('./request');
+Request = require('./fleet-request');
 
 FleetClient = require('./fleet-client');
 
@@ -52,7 +52,8 @@ NetworkProtocol = (function(_super) {
 
   function NetworkProtocol(context) {
     NetworkProtocol.__super__.constructor.call(this, 'network', context);
-    this.loader = context.getGraphLoader();
+    this.loader = context.getNetworkLoader();
+    this.subscriptions = {};
     this.command('start', this.start, ':graph/start', 'PUT');
     this.command('getStatus', this.getStatus);
     this.command('stop', this.stop, ':graph/stop', 'PUT');
@@ -69,6 +70,41 @@ NetworkProtocol = (function(_super) {
     this.addCommandSchemas(schema);
   }
 
+  NetworkProtocol.prototype.subscribeNetwork = function(network) {
+    var forward;
+    if (this.subscriptions[network.id]) {
+      return;
+    }
+    this.subscriptions[network.id] = true;
+    forward = (function(_this) {
+      return function(event) {
+        return network.on(event, function(data) {
+          if (!_this.subscriptions[network.id]) {
+            return;
+          }
+          while (event.indexOf('-') !== -1) {
+            event = event.replace('-', '');
+          }
+          return _this.send(event, data);
+        });
+      };
+    })(this);
+    forward('started');
+    forward('stopped');
+    forward('status');
+    forward('data');
+    forward('error');
+    forward('process-error');
+    return forward('icon');
+  };
+
+  NetworkProtocol.prototype.unsubscribeNetwork = function(network) {
+    if (!this.subscriptions[network.id]) {
+      return;
+    }
+    return this.subscriptions[network.id] = void 0;
+  };
+
 
   /**
   @typedef { object } startPayload
@@ -83,19 +119,11 @@ NetworkProtocol = (function(_super) {
    */
 
   NetworkProtocol.prototype.start = function(payload) {
-    return this.loader.fetchGraph(payload.graph).then((function(_this) {
-      return function(graph) {
-        var req, _ref;
-        req = new Request(payload.graph, _this.context.secret, 'launched', (_ref = graph.properties.metadata) != null ? _ref.private_key : void 0);
-        return client.send(req).then(function() {
-          var _base;
-          ((_base = graph.properties).network != null ? _base.network : _base.network = {}).state = 'launched';
-          graph.properties.network.startTime = new Date().getTime();
-          graph.properties.metadata.dirty = true;
-          return _this.loader.save(payload);
-        });
-      };
-    })(this));
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.start().then(function() {
+        return payload;
+      });
+    });
   };
 
 
@@ -122,50 +150,8 @@ NetworkProtocol = (function(_super) {
    */
 
   NetworkProtocol.prototype.getStatus = function(payload) {
-    return this.loader.fetchGraph(payload.graph).then(function(graph) {
-      var deferred, functions, keys, model, promise, result, started, uptime, value, _ref, _ref1;
-      model = (_ref = graph.properties.metadata) != null ? _ref.model : void 0;
-      if (!model) {
-        return Q.reject('Graph does not have model');
-      }
-      value = model.getValue();
-      keys = _.keys(value.processes);
-      started = ((_ref1 = graph.properties.network) != null ? _ref1.state : void 0) === 'launched';
-      if (started) {
-        uptime = (new Date().getTime() - graph.properties.network.startTime) / 1000;
-      }
-      result = {
-        graph: payload.graph,
-        running: false,
-        started: started,
-        uptime: uptime
-      };
-      if (!keys.length) {
-        return result;
-      }
-      functions = _.map(keys, function(key) {
-        var deferred;
-        deferred = Q.defer();
-        FleetClient.getUnitStates(key).then(function(states) {
-          if (_.some(states, function(state) {
-            return state.systemdActiveState === 'active';
-          })) {
-            return deferred.resolve(true);
-          } else {
-            return deferred.reject(false);
-          }
-        }).fail(deferred.reject);
-        return deferred.promise;
-      });
-      promise = functions.reduce(Q.when, []);
-      deferred = Q.defer();
-      promise.then(function() {
-        result.running = true;
-        return deferred.resolve(result);
-      }).fail(function() {
-        return deferred.resolve(result);
-      });
-      return deferred.promise;
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.getStatus();
     });
   };
 
@@ -183,18 +169,11 @@ NetworkProtocol = (function(_super) {
    */
 
   NetworkProtocol.prototype.stop = function(payload) {
-    return this.loader.fetchGraph(payload.graph).then((function(_this) {
-      return function(graph) {
-        var req, _ref;
-        req = new Request(payload.graph, _this.context.secret, 'inactive', (_ref = graph.properties.metadata) != null ? _ref.private_key : void 0);
-        return client.send(req).then(function() {
-          var _base;
-          ((_base = graph.properties).network != null ? _base.network : _base.network = {}).state = 'inactive';
-          graph.properties.metadata.dirty = true;
-          return _this.loader.save(payload);
-        });
-      };
-    })(this));
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.stop().then(function() {
+        return payload;
+      });
+    });
   };
 
 
@@ -321,14 +300,8 @@ NetworkProtocol = (function(_super) {
     if (payload.icon) {
       return Q.reject('Not implemented');
     }
-    return this.loader.fetchGraph(payload.graph).then(function(graph) {
-      var node;
-      node = graph.getNode(payload.id);
-      return models.circle.retrieve(node.component).then(function(circle) {
-        var value;
-        value = circle.getValue();
-        return value.icon;
-      });
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.getIcon(payload.id);
     });
   };
 
@@ -378,7 +351,11 @@ NetworkProtocol = (function(_super) {
   @returns { connectPayload | Promise }
    */
 
-  NetworkProtocol.prototype.connect = function(payload) {};
+  NetworkProtocol.prototype.connect = function(payload) {
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.connect(payload.id, payload.src, payload.tgt, payload.subgraph);
+    });
+  };
 
 
   /**
@@ -398,7 +375,11 @@ NetworkProtocol = (function(_super) {
   @returns { beginGroupPayload | Promise }
    */
 
-  NetworkProtocol.prototype.beginGroup = function(payload, context) {};
+  NetworkProtocol.prototype.beginGroup = function(payload, context) {
+    return this.loader.fetchNetwork(payload.graph).then(function(network) {
+      return network.connect(payload.id, payload.src, payload.tgt, payload.subgraph);
+    });
+  };
 
 
   /**

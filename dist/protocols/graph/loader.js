@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var GraphLoader, NoFlo, Q, models, _;
+var GraphLoader, NoFlo, Q, models, validator, _;
 
 Q = require('q');
 
@@ -23,6 +23,8 @@ _ = require('lodash');
 NoFlo = require('noflo');
 
 models = require('joukou-data').models;
+
+validator = require('validator');
 
 GraphLoader = (function() {
   function GraphLoader(context) {
@@ -62,13 +64,19 @@ GraphLoader = (function() {
   };
 
   GraphLoader.prototype.fetchGraph = function(id) {
-    var deferred;
+    var deferred, model;
     this.context.graph = id;
     if (this.graphs[id]) {
       return Q.resolve(this.graphs[id]);
     }
+    model = void 0;
+    if (validator.isUUID(id)) {
+      model = '_getModelByPrivateKey';
+    } else {
+      model = '_getModelByPublicKey';
+    }
     deferred = Q.defer();
-    this._getModelByPublicKey(id).then((function(_this) {
+    this[method](id).then((function(_this) {
       return function(model) {
         var value;
         value = model.getValue();
@@ -128,6 +136,10 @@ GraphLoader = (function() {
 
   GraphLoader.prototype._getModelByPublicKey = function(key) {
     return models.graph.elasticSearch("public_key:" + key, true);
+  };
+
+  GraphLoader.prototype._getModelByPrivateKey = function(key) {
+    return models.graph.retrieve(key);
   };
 
   GraphLoader.prototype._getModel = function(public_key, graph) {

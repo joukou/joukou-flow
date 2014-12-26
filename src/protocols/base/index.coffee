@@ -76,8 +76,10 @@ class BaseProtocol
 
   send: ( command, payload ) ->
     if not @context or @context.socket
-      return
-    @context.send({
+      # Not an error, using API
+      # https://github.com/joukou/joukou-flow/issues/1
+      return Q.resolve( )
+    return @context.send({
       protocol: @protocol
       command: command.toLowerCase()
       payload: payload
