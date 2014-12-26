@@ -78,15 +78,19 @@ NetworkProtocol = (function(_super) {
     this.subscriptions[network.id] = true;
     forward = (function(_this) {
       return function(event) {
-        return network.on(event, function(data) {
+        var callback, innerEvent;
+        innerEvent = event;
+        while (innerEvent.indexOf('-') !== -1) {
+          innerEvent = innerEvent.replace('-', '');
+        }
+        callback = function(data) {
           if (!_this.subscriptions[network.id]) {
+            _this.removeListener(event, callback);
             return;
           }
-          while (event.indexOf('-') !== -1) {
-            event = event.replace('-', '');
-          }
-          return _this.send(event, data);
-        });
+          return _this.send(innerEvent, data);
+        };
+        return network.on(event, callback);
       };
     })(this);
     forward('started');

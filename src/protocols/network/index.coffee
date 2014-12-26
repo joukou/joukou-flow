@@ -67,15 +67,19 @@ class NetworkProtocol extends BaseProtocol
       return
     @subscriptions[ network.id ] = yes
     forward = ( event ) =>
-      network.on( event, ( data ) =>
+      innerEvent = event
+      while innerEvent.indexOf( '-' ) isnt -1
+        # https://github.com/noflo/noflo-runtime-base/blob/master/src/protocol/Network.coffee#L163
+        innerEvent = innerEvent.replace( '-', '' )
+      callback = ( data ) =>
         # So we can change networks without making a new socket
         if not @subscriptions[ network.id ]
+          # Remove listener
+          @removeListener( event, callback )
           return
-        while event.indexOf( '-' ) isnt -1
-          # https://github.com/noflo/noflo-runtime-base/blob/master/src/protocol/Network.coffee#L163
-          event = event.replace( '-', '' )
-        @send( event, data )
-      )
+        @send( innerEvent, data )
+      network.on( event, callback )
+
     forward( 'started' )
     forward( 'stopped' )
     forward( 'status' )
