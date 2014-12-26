@@ -13,13 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-FleetClient    = require( './fleet-client' )
-RabbitMQClient = require( './rabbit-client' )
-Q              = require( 'q' )
-Request        = require( './fleet-request' )
-{ models }     = require( 'joukou-data' )
+FleetClient      = require( './fleet-client' )
+RabbitMQClient   = require( './rabbit-client' )
+Q                = require( 'q' )
+Request          = require( './fleet-request' )
+{ models }       = require( 'joukou-data' )
+{ EventEmitter } = require( 'events' )
 
-class Network
+class Network extends EventEmitter
   processes: {}
   connections: []
   initials: []

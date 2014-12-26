@@ -14,7 +14,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var FleetClient, Network, Q, RabbitMQClient, Request, models;
+var EventEmitter, FleetClient, Network, Q, RabbitMQClient, Request, models,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 FleetClient = require('./fleet-client');
 
@@ -26,7 +28,11 @@ Request = require('./fleet-request');
 
 models = require('joukou-data').models;
 
-Network = (function() {
+EventEmitter = require('events').EventEmitter;
+
+Network = (function(_super) {
+  __extends(Network, _super);
+
   Network.prototype.processes = {};
 
   Network.prototype.connections = [];
@@ -164,6 +170,6 @@ Network = (function() {
 
   return Network;
 
-})();
+})(EventEmitter);
 
 module.exports = Network;
