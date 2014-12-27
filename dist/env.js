@@ -22,8 +22,14 @@ limitations under the License.
 var self;
 
 self = {
+  isDevelopment: function() {
+    return true;
+  },
   getJWTToken: function() {
     return 'abc';
+  },
+  getWebSocketConnectionString: function() {
+    return "wss://localhost:2101";
   },
   getHost: function() {
     return "http://localhost:2101";

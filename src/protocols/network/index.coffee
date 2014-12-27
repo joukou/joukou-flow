@@ -93,8 +93,6 @@ class NetworkProtocol extends BaseProtocol
       return
     @subscriptions[ network.id ] = undefined
 
-
-
   ###*
   @typedef { object } startPayload
   @property { string } graph

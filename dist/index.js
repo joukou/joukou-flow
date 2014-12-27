@@ -25,28 +25,10 @@ limitations under the License.
 @property { function } then
 @property { function } fail
  */
-var ApiTransport, SocketTransport, WebSocketServer;
-
 if (require.main === module) {
-  require('./server');
+  module.exports = require('./server');
+} else {
+  module.exports = {
+    initialize: require('./initialize')
+  };
 }
-
-ApiTransport = require('./transports/api');
-
-SocketTransport = require('./transports/socket');
-
-WebSocketServer = require('websocket').server;
-
-module.exports = {
-  initialize: function(restifyServer) {
-    var wsServer;
-    wsServer = new WebSocketServer({
-      httpServer: restifyServer.server,
-      autoAcceptConnections: false
-    });
-    return {
-      ApiTransport: new ApiTransport(restifyServer, '/fbp'),
-      SocketTransport: new SocketTransport(wsServer)
-    };
-  }
-};

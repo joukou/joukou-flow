@@ -18,8 +18,12 @@ limitations under the License.
 @author Fabian Cook <fabian.cook@joukou.com>
 ###
 self =
+  isDevelopment: ->
+    return true # TODO
   getJWTToken: ->
     return 'abc' # TODO load from file
+  getWebSocketConnectionString: ->
+    return "wss://localhost:2101" # TODO
   getHost: ->
     # TODO get from api
     return "http://localhost:2101"

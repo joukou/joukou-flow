@@ -120,7 +120,6 @@ class RuntimeProtocol extends BaseProtocol
   ###
   ports: ( payload, context ) ->
 
-
   ###*
   @typedef { object } packet
   @property { string } port
@@ -134,6 +133,7 @@ class RuntimeProtocol extends BaseProtocol
   @returns { packet | Promise }
   ###
   receivePacket: ( payload, context ) ->
+
 
 
 

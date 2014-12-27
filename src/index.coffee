@@ -25,21 +25,7 @@ limitations under the License.
 ###
 
 if require.main is module
-  require( './server' )
-
-ApiTransport        = require( './transports/api' )
-SocketTransport     = require( './transports/socket' )
-WebSocketServer     = require( 'websocket' ).server
-
-module.exports =
-  initialize: ( restifyServer ) ->
-
-    wsServer = new WebSocketServer({
-      httpServer: restifyServer.server
-      autoAcceptConnections: false
-    })
-
-    return {
-      ApiTransport: new ApiTransport( restifyServer, '/fbp' )
-      SocketTransport: new SocketTransport( wsServer )
-    }
+  module.exports = require( './server' )
+else
+  module.exports =
+    initialize: require( './initialize' )
