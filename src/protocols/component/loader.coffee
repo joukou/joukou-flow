@@ -27,7 +27,7 @@ componentToJSON = ( component ) ->
       if not ports.hasOwnProperty( key )
         continue
       res.push({
-        id: port.getId( )
+        id: key
         type: port.getDataType( )
         description: port.getDescription( )
         addressable: port.isAddressable( )
@@ -53,9 +53,16 @@ componentToJSON = ( component ) ->
 class ComponentLoader
   constructor: ( @context ) ->
 
-  #getComponent: ( name ) ->
-  #  unless typeof name is 'string'
-  #    return undefined
+  getComponent: ( name ) ->
+    unless typeof name is 'string'
+      return Q.reject( 'Name is required' )
+    @context.getPersonas()
+    .then( ( personas ) ->
+      models.circle.getByFullName(
+        name,
+        personas
+      )
+    )
 
   getComponentForCircle: ( circle ) ->
     return (@components ?= {})[ circle.getKey() ] ?= @_toComponent( circle )
@@ -129,7 +136,7 @@ class ComponentLoader
 
     component.setIcon( value.icon )
 
-    component.setName( circle.getKey( ) )
+    component.setName( value.name )
 
     return component
 
@@ -145,7 +152,11 @@ class ComponentLoader
       )
       .then( ( circles ) =>
         result = _.map( circles, ( circle ) =>
-          return @getComponentForCircle( circle )
+          component = @getComponentForCircle( circle )
+          deferred.notify(
+            component
+          )
+          return component
         )
         deferred.resolve(
           result

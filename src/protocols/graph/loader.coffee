@@ -31,7 +31,7 @@ class GraphLoader
       properties: _.cloneDeep( value.properties ),
       nodes: value.nodes,
       edges: value.edges,
-      initializers: valie.initializers,
+      initializers: value.initializers,
       exports: value.exports,
       inports: value.inports,
       outports: value.outports,
@@ -59,12 +59,14 @@ class GraphLoader
     if @graphs[ id ]
       return Q.resolve( @graphs[ id ] )
 
-    model = undefined
+    method = '_getModelByPublicKey'
     # To long if using if/then/else. Meh
-    if validator.isUUID( id )
-      model = '_getModelByPrivateKey'
-    else
-      model = '_getModelByPublicKey'
+    lower = id.toLowerCase( )
+    if lower.indexOf( 'private:' ) isnt -1
+      replaced = lower.replace( 'private:', '' )
+      if validator.isUUID( replaced )
+        id = replaced
+        method = '_getModelByPrivateKey'
 
     deferred = Q.defer()
     @[ method ]( id )
@@ -138,10 +140,35 @@ class GraphLoader
 
 
   _getModelByPublicKey: ( key ) ->
+    deferred = Q.defer()
+
     models.graph.elasticSearch(
       "public_key:#{key}",
       yes
     )
+    .then(
+      deferred.resolve
+    )
+    .fail( =>
+      @context.getPersonaKey( )
+      .then( ( persona_key ) ->
+        models.graph.create({
+          name: id
+          public_key: key,
+          personas: [
+            key: persona_key
+          ]
+        })
+        .then(
+          deferred.resolve
+        )
+        .fail(
+          deferred.reject
+        )
+      )
+
+    )
+    return deferred.promise
 
   _getModelByPrivateKey: ( key ) ->
     models.graph.retrieve( key )
@@ -345,6 +372,8 @@ class GraphLoader
       }
     )
 
+    ( properties.environment ?= { } ).type = "joukou-noflo"
+
     graph.setProperties(
       properties
     )
@@ -373,7 +402,7 @@ class GraphLoader
       graph.properties or {}
     )
 
-    graph.properties.metadata = metadata
+    value.properties.metadata = metadata
 
     value.inports = @_nofloExportedPortsToJoukou(
       graph.inports
@@ -448,10 +477,8 @@ class GraphLoader
         payload
       )
     )
-    .fail( ( err ) ->
-      deferred.reject(
-        err
-      )
+    .fail(
+      deferred.reject
     )
     #.fail( deferred.reject )
     return deferred.promise

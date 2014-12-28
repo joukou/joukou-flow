@@ -60,16 +60,23 @@ class BaseProtocol
     .fail( deferred.reject )
     return deferred.promise
 
-  send: ( command, payload ) ->
-    if not @context or @context.socket
+  send: ( command, payload = undefined ) ->
+    if not @context?.socket
       # Not an error, using API
       # https://github.com/joukou/joukou-flow/issues/1
       return Q.resolve( )
-    return @context.send({
-      protocol: @protocol
-      command: command.toLowerCase( )
-      payload: payload
-    })
+    response = null
+    if command instanceof CommandResponse
+      response = command
+    else
+      response = new CommandResponse(
+        command.toLowerCase( ),
+        payload
+      )
+    unless response.hasProtocol( )
+      response.setProtocol( @protocol )
+
+    return @context.send( response )
 
   sendAll: ( command, payload ) ->
     if not @context or @context.socket

@@ -13,12 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-BaseProtocol = require( '../base' )
-{ models }   = require( 'joukou-data' )
-_            = require( 'lodash' )
-NoFlo        = require( 'noflo' )
-Q            = require( 'q' )
-schema       = require( './schema' )
+BaseProtocol      = require( '../base' )
+{ models }        = require( 'joukou-data' )
+_                 = require( 'lodash' )
+NoFlo             = require( 'noflo' )
+Q                 = require( 'q' )
+schema            = require( './schema' )
+NonReturnResponse = require( '../../runtime/non-return-response' )
+CommandResponse   = require( '../../runtime/command-response' )
 
 ###*
 @module joukou-fbpp/protocols/component
@@ -74,8 +76,27 @@ class ComponentProtocol extends BaseProtocol
   @returns { Array.<component> | Promise }
   ###
   list: ->
+    deferred = Q.defer()
     @loader
     .listComponents( )
+    .progress( ( component ) =>
+      response = new CommandResponse(
+        'component',
+        component
+      )
+      @send(
+        response
+      )
+    )
+    .then( ->
+      deferred.resolve(
+        new NonReturnResponse
+      )
+    )
+
+
+    return deferred.promise
+
 
 
 

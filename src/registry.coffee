@@ -54,6 +54,15 @@ exports.register = ( userId, secret = undefined ) ->
     deferred.resolve( runtime )
   )
 
+  ###
+  content: ""
+  height: 300
+  runtime: "html"
+  src: "./preview/iframe.html"
+  type: "noflo-browser"
+  width: 300
+  ###
+
   return deferred.promise
 
 

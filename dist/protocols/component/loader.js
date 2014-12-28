@@ -35,7 +35,7 @@ componentToJSON = function(component) {
         continue;
       }
       res.push({
-        id: port.getId(),
+        id: key,
         type: port.getDataType(),
         description: port.getDescription(),
         addressable: port.isAddressable(),
@@ -60,6 +60,15 @@ ComponentLoader = (function() {
   function ComponentLoader(context) {
     this.context = context;
   }
+
+  ComponentLoader.prototype.getComponent = function(name) {
+    if (typeof name !== 'string') {
+      return Q.reject('Name is required');
+    }
+    return this.context.getPersonas().then(function(personas) {
+      return models.circle.getByFullName(name, personas);
+    });
+  };
 
   ComponentLoader.prototype.getComponentForCircle = function(circle) {
     var _base, _name;
@@ -129,7 +138,7 @@ ComponentLoader = (function() {
     }
     component.description = value.description;
     component.setIcon(value.icon);
-    component.setName(circle.getKey());
+    component.setName(value.name);
     return component;
   };
 
@@ -145,7 +154,10 @@ ComponentLoader = (function() {
         return models.circle.retrieveByPersonas(keys).then(function(circles) {
           var result;
           result = _.map(circles, function(circle) {
-            return _this.getComponentForCircle(circle);
+            var component;
+            component = _this.getComponentForCircle(circle);
+            deferred.notify(component);
+            return component;
           });
           return deferred.resolve(result);
         });

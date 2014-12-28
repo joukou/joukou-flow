@@ -39,7 +39,7 @@ GraphLoader = (function() {
       properties: _.cloneDeep(value.properties),
       nodes: value.nodes,
       edges: value.edges,
-      initializers: valie.initializers,
+      initializers: value.initializers,
       exports: value.exports,
       inports: value.inports,
       outports: value.outports,
@@ -64,16 +64,19 @@ GraphLoader = (function() {
   };
 
   GraphLoader.prototype.fetchGraph = function(id) {
-    var deferred, model;
+    var deferred, lower, method, replaced;
     this.context.graph = id;
     if (this.graphs[id]) {
       return Q.resolve(this.graphs[id]);
     }
-    model = void 0;
-    if (validator.isUUID(id)) {
-      model = '_getModelByPrivateKey';
-    } else {
-      model = '_getModelByPublicKey';
+    method = '_getModelByPublicKey';
+    lower = id.toLowerCase();
+    if (lower.indexOf('private:') !== -1) {
+      replaced = lower.replace('private:', '');
+      if (validator.isUUID(replaced)) {
+        id = replaced;
+        method = '_getModelByPrivateKey';
+      }
     }
     deferred = Q.defer();
     this[method](id).then((function(_this) {
@@ -135,7 +138,24 @@ GraphLoader = (function() {
   };
 
   GraphLoader.prototype._getModelByPublicKey = function(key) {
-    return models.graph.elasticSearch("public_key:" + key, true);
+    var deferred;
+    deferred = Q.defer();
+    models.graph.elasticSearch("public_key:" + key, true).then(deferred.resolve).fail((function(_this) {
+      return function() {
+        return _this.context.getPersonaKey().then(function(persona_key) {
+          return models.graph.create({
+            name: id,
+            public_key: key,
+            personas: [
+              {
+                key: persona_key
+              }
+            ]
+          }).then(deferred.resolve).fail(deferred.reject);
+        });
+      };
+    })(this));
+    return deferred.promise;
   };
 
   GraphLoader.prototype._getModelByPrivateKey = function(key) {
@@ -331,6 +351,7 @@ GraphLoader = (function() {
       private_key: private_key,
       model: model
     });
+    (properties.environment != null ? properties.environment : properties.environment = {}).type = "joukou-noflo";
     graph.setProperties(properties);
     return graph;
   };
@@ -351,7 +372,7 @@ GraphLoader = (function() {
     metadata.model = void 0;
     metadata.private_key = void 0;
     value.properties = _.assign(value.properties || {}, graph.properties || {});
-    graph.properties.metadata = metadata;
+    value.properties.metadata = metadata;
     value.inports = this._nofloExportedPortsToJoukou(graph.inports);
     value.outports = this._nofloExportedPortsToJoukou(graph.outports);
     value.processes = this._nofloNodeToJoukou(graph.nodes);
@@ -410,9 +431,7 @@ GraphLoader = (function() {
       };
     })(this)).then(function() {
       return deferred.resolve(payload);
-    }).fail(function(err) {
-      return deferred.reject(err);
-    });
+    }).fail(deferred.reject);
     return deferred.promise;
   };
 

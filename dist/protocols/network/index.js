@@ -282,7 +282,12 @@ NetworkProtocol = (function(_super) {
    */
 
   NetworkProtocol.prototype.debug = function(payload) {
-    return Q.reject();
+    return this.loader.fetchNetwork(payload.graph).then((function(_this) {
+      return function(network) {
+        network.debug = !!payload.enabled;
+        return _this.loader.save();
+      };
+    })(this));
   };
 
 

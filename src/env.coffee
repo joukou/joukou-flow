@@ -22,42 +22,25 @@ Q   = require( 'q' )
 pem = require( 'pem' )
 
 self =
+  getFlowHubEnvironmentName: ->
+
+
   isDevelopment: ->
     return true # TODO
   getSSLKeyAndCertificate: ->
     deferred = Q.defer()
-    loadDevelop = ->
-      pem.createCertificate(
-        {
-          days: 1,
-          selfSigned: true
-        },
-        ( err, keys ) ->
-          if err
-            return deferred.reject( err )
-          deferred.resolve(
-            certificate: keys.certificate
-            key: keys.serviceKey
-            passphrase: undefined
-          )
-      )
-    loadProduction = ->
-      self._getSSLKey()
-      .then( ( key ) ->
-        return self._getSSLCertificate()
-        .then( ( certificate ) ->
-          deferred.resolve(
-            certificate: certificate
-            key: key
-            passphrase: self._getSSLPassPhrase( )
-          )
+    self._getSSLKey()
+    .then( ( key ) ->
+      return self._getSSLCertificate()
+      .then( ( certificate ) ->
+        deferred.resolve(
+          certificate: certificate
+          key: key
+          passphrase: self._getSSLPassPhrase( )
         )
       )
-      .fail( deferred.reject )
-    if self.isDevelopment( )
-      loadDevelop( )
-    else
-      loadProduction( )
+    )
+    .fail( deferred.reject )
     return deferred.promise
   # TODO get signed production pair
   _getSSLPassPhrase: ->

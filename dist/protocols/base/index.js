@@ -84,14 +84,23 @@ BaseProtocol = (function() {
   };
 
   BaseProtocol.prototype.send = function(command, payload) {
-    if (!this.context || this.context.socket) {
+    var response, _ref;
+    if (payload == null) {
+      payload = void 0;
+    }
+    if (!((_ref = this.context) != null ? _ref.socket : void 0)) {
       return Q.resolve();
     }
-    return this.context.send({
-      protocol: this.protocol,
-      command: command.toLowerCase(),
-      payload: payload
-    });
+    response = null;
+    if (command instanceof CommandResponse) {
+      response = command;
+    } else {
+      response = new CommandResponse(command.toLowerCase(), payload);
+    }
+    if (!response.hasProtocol()) {
+      response.setProtocol(this.protocol);
+    }
+    return this.context.send(response);
   };
 
   BaseProtocol.prototype.sendAll = function(command, payload) {

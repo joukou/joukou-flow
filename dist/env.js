@@ -28,43 +28,22 @@ Q = require('q');
 pem = require('pem');
 
 self = {
+  getFlowHubEnvironmentName: function() {},
   isDevelopment: function() {
     return true;
   },
   getSSLKeyAndCertificate: function() {
-    var deferred, loadDevelop, loadProduction;
+    var deferred;
     deferred = Q.defer();
-    loadDevelop = function() {
-      return pem.createCertificate({
-        days: 1,
-        selfSigned: true
-      }, function(err, keys) {
-        if (err) {
-          return deferred.reject(err);
-        }
+    self._getSSLKey().then(function(key) {
+      return self._getSSLCertificate().then(function(certificate) {
         return deferred.resolve({
-          certificate: keys.certificate,
-          key: keys.serviceKey,
-          passphrase: void 0
+          certificate: certificate,
+          key: key,
+          passphrase: self._getSSLPassPhrase()
         });
       });
-    };
-    loadProduction = function() {
-      return self._getSSLKey().then(function(key) {
-        return self._getSSLCertificate().then(function(certificate) {
-          return deferred.resolve({
-            certificate: certificate,
-            key: key,
-            passphrase: self._getSSLPassPhrase()
-          });
-        });
-      }).fail(deferred.reject);
-    };
-    if (self.isDevelopment()) {
-      loadDevelop();
-    } else {
-      loadProduction();
-    }
+    }).fail(deferred.reject);
     return deferred.promise;
   },
   _getSSLPassPhrase: function() {

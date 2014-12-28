@@ -61,5 +61,14 @@ exports.register = function(userId, secret) {
     setTimeout(callback, 5 * 60 * 1000);
     return deferred.resolve(runtime);
   });
+
+  /*
+  content: ""
+  height: 300
+  runtime: "html"
+  src: "./preview/iframe.html"
+  type: "noflo-browser"
+  width: 300
+   */
   return deferred.promise;
 };

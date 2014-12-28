@@ -1,5 +1,4 @@
-
-/*
+###
 Copyright 2014 Joukou Ltd
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,25 +12,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
- */
-var BaseClient, CommandResponse;
+###
+CommandResponse = require( './command-response' )
 
-CommandResponse = require('../../runtime/command-response');
-
-BaseClient = (function() {
-  function BaseClient(context) {
-    this.context = context;
-  }
-
-  BaseClient.prototype.resolveCommandResponse = function(response) {
-    if (response instanceof CommandResponse) {
-      return response;
-    }
-    return new CommandResponse(response.command, response.payload, response.protocol);
-  };
-
-  return BaseClient;
-
-})();
-
-module.exports = BaseClient;
+class NonReturnResponse extends CommandResponse
+  
+module.exports = NonReturnResponse

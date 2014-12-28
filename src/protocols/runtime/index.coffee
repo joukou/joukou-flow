@@ -13,12 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-BaseProtocol   = require( '../base/index' )
-pjson          = require( '../../../package.json' )
-uuid           = require( 'node-uuid' )
-Q              = require( 'q' )
-authentication = require( '../../authentication' ).bearer
-schema         = require( './schema' )
+BaseProtocol    = require( '../base/index' )
+pjson           = require( '../../../package.json' )
+uuid            = require( 'node-uuid' )
+Q               = require( 'q' )
+authentication  = require( '../../authentication' ).bearer
+schema          = require( './schema' )
+CommandResponse = require( '../../runtime/command-response' )
 
 ###*
 @module joukou-fbpp/protocols/runtime
@@ -69,12 +70,17 @@ class RuntimeProtocol extends BaseProtocol
       graph: context.graph
     }
 
+    response = new CommandResponse(
+      'runtime',
+      runtime
+    )
+
     if context.authorized and (
       not payload.secret? or
-      # Re-authenticate
+      # No need to re-authenticate
       payload.secret is context.secret
     )
-      return runtime
+      return response
 
     deferred = Q.defer()
     authentication.verify(
@@ -85,10 +91,13 @@ class RuntimeProtocol extends BaseProtocol
         context.user = model
         context.authorized = yes
         context.secret = payload.secret
-        deferred.resolve( runtime )
+        deferred.resolve( response )
     )
 
     return deferred.promise
+
+  sendPorts: ( name, graph ) ->
+
 
   ###*
   @param { string } id

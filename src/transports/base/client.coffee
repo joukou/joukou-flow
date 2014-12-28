@@ -20,7 +20,7 @@ class BaseClient
 
   resolveCommandResponse: ( response ) ->
     if response instanceof CommandResponse
-      return CommandResponse
+      return response
     return new CommandResponse(
       response.command,
       response.payload,

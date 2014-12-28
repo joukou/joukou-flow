@@ -28,21 +28,22 @@ RabbitMQRequest = (function() {
 
   RabbitMQRequest.prototype.toJSON = function() {
     var key, ret, _ref, _ref1;
-    if (this.graph.getKey instanceof Function) {
+    if (typeof this.graph === 'string') {
+      key = this.graph;
+    } else if (this.graph.getKey instanceof Function) {
       key = this.graph.getKey();
-    }
-    if ((_ref = this.graph.properties) != null ? (_ref1 = _ref.metadata) != null ? _ref1.private_key : void 0 : void 0) {
+    } else if ((_ref = this.graph.properties) != null ? (_ref1 = _ref.metadata) != null ? _ref1.private_key : void 0 : void 0) {
       key = this.graph.properties.metadata.private_key;
     }
     ret = {
       "_links": {
         "joukou:graph": {
-          href: "" + (env.getHost()) + "/fbp/protocols/graph/" + key
+          href: "" + (env.getHost()) + "/fbp/protocols/graph/private:" + key
         }
       },
       desiredState: this.state,
       secret: this.secret,
-      exchange: this.exchange
+      exchange: this.exchange || key
     };
     return JSON.stringify(ret);
   };

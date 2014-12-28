@@ -238,7 +238,11 @@ class NetworkProtocol extends BaseProtocol
   @returns { debugPayload | Promise }
   ###
   debug: ( payload ) ->
-    return Q.reject( )
+    @loader.fetchNetwork( payload.graph )
+    .then( ( network ) =>
+      network.debug = !!payload.enabled
+      return @loader.save( )
+    )
 
   ###*
   @typedef { object } iconPayload
