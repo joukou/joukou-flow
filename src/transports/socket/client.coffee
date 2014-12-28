@@ -34,10 +34,11 @@ class SocketClient extends BaseClient
       data.payload
     )
     promise.then( ( payload ) =>
+      payload = @resolveCommandResponse( payload )
       @send({
-        protocol: data.protocol,
-        command: data.command,
-        payload: if payload? then payload or data.payload
+        protocol: payload.getProtocol( ),
+        command: payload.getCommand( ),
+        payload: payload.getPayload( )
       })
     )
     .fail( ( err ) ->

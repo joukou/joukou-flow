@@ -30,9 +30,11 @@
     "noflo-runtime-base": "^0.2.16",
     "passport": "^0.2.1",
     "passport-http-bearer": "^1.0.1",
+    "pem": "^1.4.4",
     "q": "1.0.1",
     "restify": "^2.8.3",
     "restify-cors-middleware": "0.0.4",
+    "restify-https": "0.0.3",
     "schemajs": "^0.1.11",
     "validator": "^3.26.0",
     "websocket": "^1.0.14"

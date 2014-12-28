@@ -32,7 +32,9 @@ _                   = require( 'lodash' )
 
 module.exports = ( httpRestifyServer, httpsRestifyServer = undefined ) ->
 
-  servers = httpRestifyServer.server
+  servers = [
+    httpRestifyServer.server
+  ]
 
   if httpsRestifyServer? and httpsRestifyServer isnt httpRestifyServer
     servers = [

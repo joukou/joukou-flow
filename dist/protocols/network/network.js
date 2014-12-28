@@ -48,9 +48,13 @@ Network = (function(_super) {
   Network.prototype.portBuffer = {};
 
   function Network(context, graph) {
-    var _base;
+    var _base, _ref, _ref1, _ref2;
     this.context = context;
     this.graph = graph;
+    if (!((_ref = this.graph) != null ? (_ref1 = _ref.properties) != null ? (_ref2 = _ref1.metadata) != null ? _ref2.private_key : void 0 : void 0 : void 0)) {
+      throw new Error("Graph does not have a private key");
+      return;
+    }
     this.id = this.graph.properties.metadata.private_key;
     this.processes = {};
     this.connections = [];
@@ -60,11 +64,9 @@ Network = (function(_super) {
     this.started = false;
     this.debug = false;
     this.network = (_base = this.graph.properties).network != null ? _base.network : _base.network = {};
-    this._save = this.context.getGraphLoader().save;
+    this._save = this.context.getNetworkLoader().save;
     this.componentLoader = this.context.getComponentLoader();
   }
-
-  Network.prototype.initialize = function() {};
 
   Network.prototype.save = function() {
     return typeof this._save === "function" ? this._save() : void 0;
@@ -77,19 +79,18 @@ Network = (function(_super) {
       return function() {
         _this.network.state = 'launched';
         _this.network.startTime = new Date().getTime();
-        return _this.loader.save();
+        return _this.save();
       };
     })(this));
   };
 
   Network.prototype.stop = function() {
-    var req, _ref;
-    req = new Request(this.id, this.context.secret, 'inactive', (_ref = this.graph.properties.metadata) != null ? _ref.private_key : void 0);
+    var req;
+    req = new Request(this.id, this.context.secret, 'inactive', this.id);
     return RabbitMQClient.send(req).then((function(_this) {
       return function() {
-        _this.graph.properties.network.state = 'inactive';
-        _this.graph.properties.metadata.dirty = true;
-        return _this.loader.save();
+        _this.network.state = 'inactive';
+        return _this.save();
       };
     })(this));
   };
@@ -118,12 +119,12 @@ Network = (function(_super) {
     }
     value = model.getValue();
     keys = _.keys(value.processes);
-    started = this.graph.properties.network.state === 'launched';
+    started = this.network.state === 'launched';
     if (started) {
-      uptime = (new Date().getTime() - this.graph.properties.network.startTime) / 1000;
+      uptime = (new Date().getTime() - this.network.startTime) / 1000;
     }
     result = {
-      graph: this.graph.properties.private_key,
+      graph: this.id,
       running: false,
       started: started,
       uptime: uptime

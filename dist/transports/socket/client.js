@@ -47,10 +47,11 @@ SocketClient = (function(_super) {
     promise = this.context.receive(data.protocol, data.command, data.payload);
     return promise.then((function(_this) {
       return function(payload) {
+        payload = _this.resolveCommandResponse(payload);
         return _this.send({
-          protocol: data.protocol,
-          command: data.command,
-          payload: payload != null ? payload || data.payload : void 0
+          protocol: payload.getProtocol(),
+          command: payload.getCommand(),
+          payload: payload.getPayload()
         });
       };
     })(this)).fail(function(err) {

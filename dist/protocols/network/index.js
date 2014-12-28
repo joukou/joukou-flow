@@ -379,11 +379,7 @@ NetworkProtocol = (function(_super) {
   @returns { beginGroupPayload | Promise }
    */
 
-  NetworkProtocol.prototype.beginGroup = function(payload, context) {
-    return this.loader.fetchNetwork(payload.graph).then(function(network) {
-      return network.connect(payload.id, payload.src, payload.tgt, payload.subgraph);
-    });
-  };
+  NetworkProtocol.prototype.beginGroup = function(payload) {};
 
 
   /**

@@ -14,13 +14,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, Q, schemajs, _;
+var BaseProtocol, CommandResponse, Q, schemajs, _;
 
 _ = require('lodash');
 
 Q = require('q');
 
 schemajs = require('schemajs');
+
+CommandResponse = require('../../runtime/command-response');
 
 
 /**
@@ -34,28 +36,6 @@ BaseProtocol = (function() {
   BaseProtocol.prototype.filterCommands = null;
 
   BaseProtocol.prototype.commands = null;
-
-  BaseProtocol.include = function(cls, obj) {
-    var key, value, _ref;
-    if (!obj) {
-      throw new Error("Include requires object");
-    }
-    _ref = obj.prototype;
-    for (key in _ref) {
-      value = _ref[key];
-      if (!obj.prototype.hasOwnProperty(key)) {
-        contine;
-      }
-      if (key === 'include') {
-        continue;
-      }
-      if (cls.hasOwnProperty(key)) {
-        continue;
-      }
-      cls.prototype[key] = value;
-    }
-    return cls;
-  };
 
   function BaseProtocol(protocol, context) {
     this.protocol = protocol;
@@ -96,7 +76,7 @@ BaseProtocol = (function() {
   BaseProtocol.prototype._resolvePromise = function(data) {
     var deferred;
     deferred = Q.defer();
-    if (!data || !data.then || !data.fail) {
+    if ((data == null) || (data.then == null) || (data.fail == null)) {
       return Q.resolve(data);
     }
     data.then(deferred.resolve).fail(deferred.reject);
@@ -135,7 +115,16 @@ BaseProtocol = (function() {
     try {
       promise = handler(payload, this.context);
       promise = this._resolvePromise(promise);
-      promise.then(deferred.resolve).fail(deferred.reject);
+      promise.then((function(_this) {
+        return function(data) {
+          if (!(data instanceof CommandResponse)) {
+            data = new CommandResponse(command, data != null ? data : payload, _this.protocol);
+          } else if (!data.hasProtocol()) {
+            data.setProtocol(_this.protocol);
+          }
+          return data;
+        };
+      })(this)).then(deferred.resolve).fail(deferred.reject);
     } catch (_error) {
       e = _error;
       return Q.reject(e);

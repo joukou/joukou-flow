@@ -26,9 +26,9 @@ limitations under the License.
 @property { function } fail
  */
 if (require.main === module) {
-  module.exports = require('./server');
-} else {
-  module.exports = {
-    initialize: require('./initialize')
-  };
+  require('./server');
 }
+
+module.exports = {
+  initialize: require('./initialize')
+};

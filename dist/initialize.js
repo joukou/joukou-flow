@@ -44,7 +44,7 @@ module.exports = function(httpRestifyServer, httpsRestifyServer) {
   if (httpsRestifyServer == null) {
     httpsRestifyServer = void 0;
   }
-  servers = httpRestifyServer.server;
+  servers = [httpRestifyServer.server];
   if ((httpsRestifyServer != null) && httpsRestifyServer !== httpRestifyServer) {
     servers = [httpRestifyServer, httpsRestifyServer];
   }

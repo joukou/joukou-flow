@@ -115,7 +115,7 @@ class ApiTransport extends BaseTransport
 
 
   route: ( key, command ) ->
-    return ( req, res, next ) ->
+    return ( req, res, next ) =>
 
       context = new RuntimeContext()
 
@@ -140,10 +140,11 @@ class ApiTransport extends BaseTransport
         return next( err )
 
       promise
-      .then( ( payload ) ->
+      .then( ( payload ) =>
+        payload = @resolveCommandResponse( payload )
         res.send(
           200,
-          if payload? then payload else req.body
+          payload.getPayload( )
         )
       )
       .fail( ( err ) ->

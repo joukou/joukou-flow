@@ -25,7 +25,7 @@ limitations under the License.
 ###
 
 if require.main is module
-  module.exports = require( './server' )
-else
-  module.exports =
+  require( './server' )
+
+module.exports =
     initialize: require( './initialize' )

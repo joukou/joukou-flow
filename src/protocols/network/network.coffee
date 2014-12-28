@@ -29,6 +29,9 @@ class Network extends EventEmitter
   startupTime: 0
   portBuffer: {}
   constructor: ( @context, @graph ) ->
+    if not @graph?.properties?.metadata?.private_key
+      throw new Error( "Graph does not have a private key" )
+      return
 
     @id = @graph.properties.metadata.private_key
     @processes = {}
@@ -41,10 +44,8 @@ class Network extends EventEmitter
 
     # Modify this value to save in database
     @network = @graph.properties.network ?= { }
-    @_save = @context.getGraphLoader( ).save
+    @_save = @context.getNetworkLoader( ).save
     @componentLoader = @context.getComponentLoader( )
-
-  initialize: ->
 
   save: ->
     @_save?()
@@ -61,7 +62,7 @@ class Network extends EventEmitter
     ).then( =>
       @network.state = 'launched'
       @network.startTime = new Date( ).getTime( )
-      return @loader.save( )
+      return @save( )
     )
 
   stop: ->
@@ -69,14 +70,13 @@ class Network extends EventEmitter
       @id,
       @context.secret,
       'inactive',
-      @graph.properties.metadata?.private_key
+      @id
     )
     RabbitMQClient.send(
       req
     ).then( =>
-      @graph.properties.network.state = 'inactive'
-      @graph.properties.metadata.dirty = yes
-      return @loader.save( )
+      @network.state = 'inactive'
+      return @save( )
     )
 
   isStarted: ->
@@ -100,14 +100,14 @@ class Network extends EventEmitter
       return Q.reject( 'Graph does not have a private key' )
     value = model.getValue( )
     keys = _.keys( value.processes )
-    started = @graph.properties.network.state is 'launched'
+    started = @network.state is 'launched'
     if started
       uptime = (
         new Date( ).getTime( ) -
-        @graph.properties.network.startTime
+        @network.startTime
       ) / 1000
     result = {
-      graph: @graph.properties.private_key,
+      graph: @id,
       running: no,
       started: started
       uptime: uptime

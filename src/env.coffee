@@ -17,13 +17,71 @@ limitations under the License.
 @module joukou-fbpp/env
 @author Fabian Cook <fabian.cook@joukou.com>
 ###
+fs  = require( 'fs' )
+Q   = require( 'q' )
+pem = require( 'pem' )
+
 self =
   isDevelopment: ->
     return true # TODO
+  getSSLKeyAndCertificate: ->
+    deferred = Q.defer()
+    loadDevelop = ->
+      pem.createCertificate(
+        {
+          days: 1,
+          selfSigned: true
+        },
+        ( err, keys ) ->
+          if err
+            return deferred.reject( err )
+          deferred.resolve(
+            certificate: keys.certificate
+            key: keys.serviceKey
+            passphrase: undefined
+          )
+      )
+    loadProduction = ->
+      self._getSSLKey()
+      .then( ( key ) ->
+        return self._getSSLCertificate()
+        .then( ( certificate ) ->
+          deferred.resolve(
+            certificate: certificate
+            key: key
+            passphrase: self._getSSLPassPhrase( )
+          )
+        )
+      )
+      .fail( deferred.reject )
+    if self.isDevelopment( )
+      loadDevelop( )
+    else
+      loadProduction( )
+    return deferred.promise
+  # TODO get signed production pair
+  _getSSLPassPhrase: ->
+    return process.env.JOUKOU_SSL_PASSPHRASE or 'joukou'
+  _getSSLKey: ->
+    deferred = Q.defer()
+    fs.readFile( './ssl/localhost.key', ( err, data ) ->
+      if err
+        return deferred.reject( err )
+      deferred.resolve( data )
+    )
+    return deferred.promise
+  _getSSLCertificate: ->
+    deferred = Q.defer()
+    fs.readFile( './ssl/localhost.crt', ( err, data ) ->
+      if err
+        return deferred.reject( err )
+      deferred.resolve( data )
+    )
+    return deferred.promise
   getJWTToken: ->
     return 'abc' # TODO load from file
   getWebSocketConnectionString: ->
-    return "wss://localhost:2101" # TODO
+    return "wss://localhost:2102" # TODO
   getHost: ->
     # TODO get from api
     return "http://localhost:2101"

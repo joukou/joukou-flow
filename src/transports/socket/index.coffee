@@ -22,7 +22,13 @@ MessageSchema = require( '../../message/schema' )
 class SocketTransport extends BaseTransport
   constructor: ( @server ) ->
     server.on('request', ( request ) ->
-      connection = request.accept( )
+
+      protocol = undefined
+      # Check if request if noflo, if not for dev just accept it
+      if request.requestedProtocols.indexOf( 'noflo' ) isnt -1
+        protocol = 'noflo'
+
+      connection = request.accept( protocol, request.origin )
 
       #TODO optional handshake auth
       context = new RuntimeContext( )

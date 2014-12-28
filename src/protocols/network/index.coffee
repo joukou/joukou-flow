@@ -318,11 +318,8 @@ class NetworkProtocol extends BaseProtocol
   @param { RuntimeContext } context
   @returns { beginGroupPayload | Promise }
   ###
-  beginGroup: ( payload, context ) ->
-    @loader.fetchNetwork( payload.graph )
-    .then( ( network ) ->
-      network.connect( payload.id, payload.src, payload.tgt, payload.subgraph )
-    )
+  beginGroup: ( payload ) ->
+
   ###*
   @typedef { object } data
   @property { string } id
