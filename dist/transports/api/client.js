@@ -32,6 +32,7 @@ ApiClient = (function(_super) {
     this.next = next;
     this.api = api;
     this.context = context;
+    ApiClient.__super__.constructor.call(this, this.api, this.context);
     this.payloads = ((_ref = req.body) != null ? _ref.payloads : void 0) || [];
     this.results = [];
     if (req.user) {
@@ -69,7 +70,7 @@ ApiClient = (function(_super) {
         }
         promise = context.receive(payload);
         return promise.then(function(resultPayload) {
-          resultPayload = _this.api.resolveCommandResponse(resultPayload);
+          resultPayload = _this.resolveCommandResponse(resultPayload);
           _this.results[_this.index] = {
             success: true,
             error: null,

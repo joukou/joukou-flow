@@ -47,6 +47,7 @@ componentToJSON = function(component) {
     return res;
   };
   return {
+    _metadata: component._metadata,
     name: component.name,
     description: component.getDescription(),
     icon: component.getIcon(),
@@ -139,6 +140,9 @@ ComponentLoader = (function() {
     component.description = value.description;
     component.setIcon(value.icon);
     component.setName(value.name);
+    component._metadata = {
+      key: circle.getKey()
+    };
     return component;
   };
 

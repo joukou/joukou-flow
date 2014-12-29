@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseTransport, Q, env, jwt, _;
+var BaseTransport, CommandResponse, Q, env, jwt, _;
 
 Q = require('q');
 
@@ -24,8 +24,26 @@ jwt = require('jsonwebtoken');
 
 env = require('../../env');
 
+CommandResponse = require('../../runtime/command-response');
+
 BaseTransport = (function() {
   function BaseTransport() {}
+
+  BaseTransport.prototype.resolveCommandResponse = function(response, context) {
+    var queue;
+    if (context == null) {
+      context = null;
+    }
+    queue = context.getSendQueue();
+    context.clearSendQueue();
+    if (!(response instanceof CommandResponse)) {
+      response = new CommandResponse(response.command, response.payload, response.protocol);
+    }
+    if (queue != null ? queue.length : void 0) {
+      response.setSendQueue(queue);
+    }
+    return response;
+  };
 
   return BaseTransport;
 

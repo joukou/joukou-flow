@@ -61,10 +61,6 @@ class BaseProtocol
     return deferred.promise
 
   send: ( command, payload = undefined ) ->
-    if not @context?.socket
-      # Not an error, using API
-      # https://github.com/joukou/joukou-flow/issues/1
-      return Q.resolve( )
     response = null
     if command instanceof CommandResponse
       response = command

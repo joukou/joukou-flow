@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var ApiTransport, BaseTransport, DocumentationClient, MessageSchema, PayloadClient, RuntimeContext, authenticate, _,
+var ApiTransport, BaseTransport, DocumentationClient, MessageSchema, NonReturnResponse, PayloadClient, RuntimeContext, authenticate, _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -31,6 +31,8 @@ DocumentationClient = require('./documentation');
 PayloadClient = require('./payload');
 
 _ = require('lodash');
+
+NonReturnResponse = require('../../runtime/non-return-response');
 
 ApiTransport = (function(_super) {
   __extends(ApiTransport, _super);
@@ -142,6 +144,30 @@ ApiTransport = (function(_super) {
     }
   };
 
+  ApiTransport.prototype.processCommandResponseQueue = function(response) {
+    var command, protocol, queue;
+    queue = response.getSendQueue();
+    if (!(queue != null ? queue.length : void 0)) {
+      return response.getPayload();
+    }
+    if (!(response instanceof NonReturnResponse)) {
+      return {
+        payload: response.getPayload(),
+        queue: queue
+      };
+    }
+    command = queue[0].getCommand();
+    protocol = queue[0].getProtocol();
+    if (_.every(queue, function(res) {
+      return res.getCommand() === command && res.getProtocol() === protocol;
+    })) {
+      return _.map(queue, function(res) {
+        return res.getPayload();
+      });
+    }
+    return queue;
+  };
+
   ApiTransport.prototype.route = function(key, command) {
     return (function(_this) {
       return function(req, res, next) {
@@ -160,8 +186,10 @@ ApiTransport = (function(_super) {
           return next(err);
         }
         return promise.then(function(payload) {
-          payload = _this.resolveCommandResponse(payload);
-          return res.send(200, payload.getPayload());
+          var response;
+          payload = _this.resolveCommandResponse(payload, context);
+          response = _this.processCommandResponseQueue(payload);
+          return res.send(200, response);
         }).fail(function(err) {
           return next(err || 'Failed to process request');
         });

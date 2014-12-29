@@ -33,7 +33,7 @@ class SocketTransport extends BaseTransport
       #TODO optional handshake auth
       context = new RuntimeContext( )
       context.socket = yes
-      client = new SocketClient( connection, context, @ )
+      client = new SocketClient( @, connection, context )
       connection.on( 'message', ( message ) ->
         utf8 = ""
         if message.type is 'utf8'

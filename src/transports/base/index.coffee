@@ -13,12 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-Q   = require( 'q' )
-_   = require( 'lodash' )
-jwt = require( 'jsonwebtoken' )
-env = require( '../../env' )
+Q               = require( 'q' )
+_               = require( 'lodash' )
+jwt             = require( 'jsonwebtoken' )
+env             = require( '../../env' )
+CommandResponse = require( '../../runtime/command-response' )
 
 class BaseTransport
+
+
+  resolveCommandResponse: ( response, context = null ) ->
+    queue = context.getSendQueue( )
+    context.clearSendQueue( )
+
+    unless response instanceof CommandResponse
+      response = new CommandResponse(
+        response.command,
+        response.payload,
+        response.protocol
+      )
+
+    if queue?.length
+      response.setSendQueue( queue )
+
+    return response
 
 
 module.exports = BaseTransport

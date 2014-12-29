@@ -84,12 +84,9 @@ BaseProtocol = (function() {
   };
 
   BaseProtocol.prototype.send = function(command, payload) {
-    var response, _ref;
+    var response;
     if (payload == null) {
       payload = void 0;
-    }
-    if (!((_ref = this.context) != null ? _ref.socket : void 0)) {
-      return Q.resolve();
     }
     response = null;
     if (command instanceof CommandResponse) {

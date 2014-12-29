@@ -38,6 +38,14 @@ CommandResponse = (function() {
     this.protocol = protocol;
   };
 
+  CommandResponse.prototype.setSendQueue = function(sendQueue) {
+    this.sendQueue = sendQueue;
+  };
+
+  CommandResponse.prototype.getSendQueue = function() {
+    return this.sendQueue;
+  };
+
   CommandResponse.prototype.getCommand = function() {
     return this.command;
   };
@@ -47,11 +55,17 @@ CommandResponse = (function() {
   };
 
   CommandResponse.prototype.toJSON = function() {
-    return {
+    var queue, res;
+    res = {
       protocol: this.getProtocol(),
       command: this.getCommand(),
       payload: this.getPayload()
     };
+    queue = this.getSendQueue();
+    if (queue != null) {
+      res.queue = queue;
+    }
+    return res;
   };
 
   return CommandResponse;

@@ -14,20 +14,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseClient, CommandResponse;
-
-CommandResponse = require('../../runtime/command-response');
+var BaseClient;
 
 BaseClient = (function() {
-  function BaseClient(context) {
+  function BaseClient(transport, context) {
+    this.transport = transport;
     this.context = context;
   }
 
   BaseClient.prototype.resolveCommandResponse = function(response) {
-    if (response instanceof CommandResponse) {
-      return response;
-    }
-    return new CommandResponse(response.command, response.payload, response.protocol);
+    return this.transport.resolveCommandResponse(response, this.context);
   };
 
   return BaseClient;

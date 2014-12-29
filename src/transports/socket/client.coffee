@@ -21,8 +21,8 @@ class SocketClient extends BaseClient
   connected: yes
   context: null
   connection: null
-  constructor: ( @connection, @context ) ->
-    super( @context )
+  constructor: ( @transport, @connection, @context ) ->
+    super( @transport, @context )
     @context.send = @send.bind( @ )
     @context.sendAll = @sendAll.bind( @ )
   receive: ( data ) ->

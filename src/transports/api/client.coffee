@@ -19,6 +19,7 @@ MessageSchema = require( '../../message/schema' )
 class ApiClient extends BaseClient
 
   constructor: ( @req, @res, @next, @api, @context ) ->
+    super( @api, @context )
 
     @payloads = req.body?.payloads or []
     @results = []
@@ -67,7 +68,7 @@ class ApiClient extends BaseClient
       promise
       .then( ( resultPayload ) =>
 
-        resultPayload = @api.resolveCommandResponse( resultPayload )
+        resultPayload = @resolveCommandResponse( resultPayload )
 
         @results[ @index ] = {
           success: true
