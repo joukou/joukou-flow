@@ -30,8 +30,10 @@ class ApiClient extends BaseClient
       context.user = req.user
       context.authorized = yes
 
+    @runPayloads( )
 
   runPayloads: ->
+
     if not @payloads.length
       return @res.send(
         400,
@@ -45,6 +47,7 @@ class ApiClient extends BaseClient
 
     # Run all payloads in sync
     next = =>
+
       @index += 1
       payload = @payloads[ @index ]
 
@@ -61,8 +64,10 @@ class ApiClient extends BaseClient
         }
         return @complete( )
 
-      promise = context.receive(
-        payload
+      promise = @context.receive(
+        payload.protocol,
+        payload.command,
+        payload.payload
       )
 
       promise
@@ -80,6 +85,12 @@ class ApiClient extends BaseClient
         next( )
       )
       .fail( ( err ) =>
+
+        if err instanceof Error
+          err =
+            message: err.message
+            stack: err.stack
+
         @results[ @index ] = {
           success: false
           error: err
@@ -89,7 +100,6 @@ class ApiClient extends BaseClient
         }
         @complete( )
       )
-
 
     next( )
 
@@ -109,14 +119,15 @@ class ApiClient extends BaseClient
       )
       if result.success
         @completedUpTo = index
-        response.payload.push(
+        response.payloads.push(
           result.payload
         )
 
-    response.success = @completedUpTo is @payloads.length
+    response.success = @completedUpTo + 1 is @payloads.length
+    response.completed = @completedUpTo + 1
 
     if not response.success
-      i = @completedUpTo
+      i = @completedUpTo + 1
       while i < @payloads.length
         if @results[ i ]
           i++
@@ -130,16 +141,9 @@ class ApiClient extends BaseClient
         })
         i++
 
-
-
-
-
-
-
-
-
-
-
-
+    @res.send(
+      200,
+      response
+    )
 
 module.exports = ApiClient
