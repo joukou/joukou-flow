@@ -66,6 +66,9 @@ class ApiClient extends BaseClient
 
       promise
       .then( ( resultPayload ) =>
+
+        resultPayload = @api.resolveCommandResponse( resultPayload )
+
         @results[ @index ] = {
           success: true
           error: null

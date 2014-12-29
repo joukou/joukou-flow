@@ -13,19 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
+CommandResponse = require( './command-response' )
 
-###*
-@typedef { object } Promise
-@property { function } then
-@property { function } fail
-###
-
-if require.main is module
-  require( './server' )
-
-module.exports =
-    initialize: require( './initialize' )
+class NonReturnResponse extends CommandResponse
+  
+module.exports = NonReturnResponse

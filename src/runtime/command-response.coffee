@@ -13,19 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
+class CommandResponse
+  constructor: ( @command, @payload, @protocol = undefined ) ->
 
-###*
-@typedef { object } Promise
-@property { function } then
-@property { function } fail
-###
+  hasProtocol: ->
+    return @protocol?
 
-if require.main is module
-  require( './server' )
+  getProtocol: ->
+    unless @hasProtocol( )
+      throw new Error( "Protocol not defined for command #{ @command }")
+    return @protocol
 
-module.exports =
-    initialize: require( './initialize' )
+  setProtocol: ( @protocol ) ->
+
+  getCommand: ->
+    return @command
+
+  getPayload: ->
+    return @payload
+
+  toJSON: ->
+    return {
+      protocol: @getProtocol( )
+      command: @getCommand( )
+      payload: @getPayload( )
+    }
+
+module.exports = CommandResponse

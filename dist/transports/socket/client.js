@@ -14,13 +14,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseClient, MessageSchema, SocketClient,
+var BaseClient, MessageSchema, NonReturningResponse, SocketClient,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 MessageSchema = require('../../message/schema');
 
 BaseClient = require('../base/client');
+
+NonReturningResponse = require('../../runtime/non-return-response');
 
 SocketClient = (function(_super) {
   __extends(SocketClient, _super);
@@ -47,13 +49,17 @@ SocketClient = (function(_super) {
     promise = this.context.receive(data.protocol, data.command, data.payload);
     return promise.then((function(_this) {
       return function(payload) {
-        return _this.send({
-          protocol: data.protocol,
-          command: data.command,
-          payload: payload != null ? payload || data.payload : void 0
-        });
+        payload = _this.resolveCommandResponse(payload);
+        if (payload instanceof NonReturningResponse) {
+          return;
+        }
+        return _this.send(payload);
       };
     })(this)).fail(function(err) {
+      if (!err) {
+        console.log("Error occurred in " + data.protocol + "/" + data.command);
+        return;
+      }
       return console.log(err, err && err.stack);
     });
   };

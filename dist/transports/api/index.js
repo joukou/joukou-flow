@@ -143,27 +143,30 @@ ApiTransport = (function(_super) {
   };
 
   ApiTransport.prototype.route = function(key, command) {
-    return function(req, res, next) {
-      var context, err, payload, promise, protocol;
-      context = new RuntimeContext();
-      context.user = req.user;
-      context.authorized = true;
-      protocol = context.getProtocol(key);
-      payload = _.cloneDeep(req.body || {});
-      _.assign(payload, req.params || {});
-      promise = null;
-      try {
-        promise = protocol.receive(command, payload, context);
-      } catch (_error) {
-        err = _error;
-        return next(err);
-      }
-      return promise.then(function(payload) {
-        return res.send(200, payload != null ? payload : req.body);
-      }).fail(function(err) {
-        return next(err || 'Failed to process request');
-      });
-    };
+    return (function(_this) {
+      return function(req, res, next) {
+        var context, err, payload, promise, protocol;
+        context = new RuntimeContext();
+        context.user = req.user;
+        context.authorized = true;
+        protocol = context.getProtocol(key);
+        payload = _.cloneDeep(req.body || {});
+        _.assign(payload, req.params || {});
+        promise = null;
+        try {
+          promise = protocol.receive(command, payload, context);
+        } catch (_error) {
+          err = _error;
+          return next(err);
+        }
+        return promise.then(function(payload) {
+          payload = _this.resolveCommandResponse(payload);
+          return res.send(200, payload.getPayload());
+        }).fail(function(err) {
+          return next(err || 'Failed to process request');
+        });
+      };
+    })(this);
   };
 
   return ApiTransport;

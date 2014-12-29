@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var ComponentLoader, NoFlo, Q, models, _;
+var ComponentLoader, NoFlo, Q, componentToJSON, models, _;
 
 Q = require('q');
 
@@ -24,6 +24,38 @@ models = require('joukou-data').models;
 
 NoFlo = require('noflo');
 
+componentToJSON = function(component) {
+  var toPorts;
+  toPorts = function(ports) {
+    var key, port, res;
+    res = [];
+    for (key in ports) {
+      port = ports[key];
+      if (!ports.hasOwnProperty(key)) {
+        continue;
+      }
+      res.push({
+        id: key,
+        type: port.getDataType(),
+        description: port.getDescription(),
+        addressable: port.isAddressable(),
+        required: port.isRequired(),
+        values: void 0,
+        "default": void 0
+      });
+    }
+    return res;
+  };
+  return {
+    name: component.name,
+    description: component.getDescription(),
+    icon: component.getIcon(),
+    subgraph: component.isSubgraph(),
+    inPorts: toPorts(component.inPorts.ports),
+    outPorts: toPorts(component.outPorts.ports)
+  };
+};
+
 ComponentLoader = (function() {
   function ComponentLoader(context) {
     this.context = context;
@@ -31,8 +63,16 @@ ComponentLoader = (function() {
 
   ComponentLoader.prototype.getComponent = function(name) {
     if (typeof name !== 'string') {
-      return void 0;
+      return Q.reject('Name is required');
     }
+    return this.context.getPersonas().then(function(personas) {
+      return models.circle.getByFullName(name, personas);
+    });
+  };
+
+  ComponentLoader.prototype.getComponentForCircle = function(circle) {
+    var _base, _name;
+    return (_base = (this.components != null ? this.components : this.components = {}))[_name = circle.getKey()] != null ? _base[_name] : _base[_name] = this._toComponent(circle);
   };
 
   ComponentLoader.prototype._toComponent = function(circle) {
@@ -62,6 +102,21 @@ ComponentLoader = (function() {
         addressable: port.addressable
       });
     }
+    if (!NoFlo.Component.prototype.toJSON) {
+      NoFlo.Component.prototype.toJSON = function() {
+        return componentToJSON(this);
+      };
+    }
+    if (!NoFlo.Component.prototype.getName) {
+      NoFlo.Component.prototype.getName = function() {
+        return this.name;
+      };
+    }
+    if (!NoFlo.Component.prototype.setName) {
+      NoFlo.Component.prototype.setName = function(name) {
+        return this.name = name;
+      };
+    }
     component = new NoFlo.Component(options);
     _ref2 = component.inPorts.ports;
     for (key in _ref2) {
@@ -83,6 +138,7 @@ ComponentLoader = (function() {
     }
     component.description = value.description;
     component.setIcon(value.icon);
+    component.setName(value.name);
     return component;
   };
 
@@ -98,36 +154,10 @@ ComponentLoader = (function() {
         return models.circle.retrieveByPersonas(keys).then(function(circles) {
           var result;
           result = _.map(circles, function(circle) {
-            var component, toPorts;
-            component = _this._toComponent(circle);
-            toPorts = function(ports) {
-              var key, port, res;
-              res = [];
-              for (key in ports) {
-                port = ports[key];
-                if (!ports.hasOwnProperty(key)) {
-                  continue;
-                }
-                res.push({
-                  id: port.getId(),
-                  type: port.getDataType(),
-                  description: port.getDescription(),
-                  addressable: port.isAddressable(),
-                  required: port.isRequired(),
-                  values: void 0,
-                  "default": void 0
-                });
-              }
-              return res;
-            };
-            return (_this.components != null ? _this.components : _this.components = {})[circle.getKey()] = {
-              name: circle.getKey(),
-              description: component.getDescription(),
-              icon: component.getIcon(),
-              subgraph: component.isSubgraph(),
-              inPorts: toPorts(component.inPorts.ports),
-              outPorts: toPorts(component.outPorts.ports)
-            };
+            var component;
+            component = _this.getComponentForCircle(circle);
+            deferred.notify(component);
+            return component;
           });
           return deferred.resolve(result);
         });
@@ -137,9 +167,6 @@ ComponentLoader = (function() {
   };
 
   ComponentLoader.prototype.listComponents = function() {
-    if (this.components) {
-      return Q.resolve(_.values(this.components));
-    }
     return this._loadComponents();
   };
 

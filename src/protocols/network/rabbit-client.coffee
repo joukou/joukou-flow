@@ -18,7 +18,7 @@ limitations under the License.
 JoukouConductorExchange   = process.env["JOUKOU_CONDUCTOR_EXCHANGE"]
 JoukouConductorRoutingKey = process.env["JOUKOU_CONDUCTOR_ROUTING_KEY"]
 
-# https://github.com/joukou/joukou-conductor-rabbitmq/blob/develop/src/lib/conductor-client.coffee#L13
+# https://github.com/joukou/joukou-conductor-rabbitmq/blob/develop/src/lib/conductor-rabbit-client.coffee#L13
 if not JoukouConductorExchange
   JoukouConductorExchange = "amqp://localhost"
   process.env["JOUKOU_CONDUCTOR_EXCHANGE"] = JoukouConductorExchange
@@ -27,7 +27,7 @@ if not JoukouConductorRoutingKey
   JoukouConductorRoutingKey = "CONDUCTOR"
   process.env["JOUKOU_CONDUCTOR_ROUTING_KEY"] = JoukouConductorRoutingKey
 
-module.exports = new RabbitMQClient(
+module.exports = RabbitMQClient.getClient(
   JoukouConductorExchange,
   JoukouConductorRoutingKey
 )

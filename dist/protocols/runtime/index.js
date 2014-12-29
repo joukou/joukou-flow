@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, Q, RuntimeProtocol, authentication, pjson, schema, uuid,
+var BaseProtocol, CommandResponse, Q, RuntimeProtocol, authentication, pjson, schema, uuid,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -29,6 +29,8 @@ Q = require('q');
 authentication = require('../../authentication').bearer;
 
 schema = require('./schema');
+
+CommandResponse = require('../../runtime/command-response');
 
 
 /**
@@ -81,7 +83,7 @@ RuntimeProtocol = (function(_super) {
    */
 
   RuntimeProtocol.prototype.getRuntime = function(payload, context) {
-    var deferred, runtime;
+    var deferred, response, runtime;
     runtime = {
       type: context.type,
       version: context.version,
@@ -90,8 +92,9 @@ RuntimeProtocol = (function(_super) {
       label: context.label,
       graph: context.graph
     };
+    response = new CommandResponse('runtime', runtime);
     if (context.authorized && ((payload.secret == null) || payload.secret === context.secret)) {
-      return runtime;
+      return response;
     }
     deferred = Q.defer();
     authentication.verify(payload.secret, function(err, model) {
@@ -101,10 +104,12 @@ RuntimeProtocol = (function(_super) {
       context.user = model;
       context.authorized = true;
       context.secret = payload.secret;
-      return deferred.resolve(runtime);
+      return deferred.resolve(response);
     });
     return deferred.promise;
   };
+
+  RuntimeProtocol.prototype.sendPorts = function(name, graph) {};
 
 
   /**

@@ -13,9 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-_        = require( 'lodash' )
-Q        = require( 'q' )
-schemajs = require( 'schemajs' )
+_               = require( 'lodash' )
+Q               = require( 'q' )
+schemajs        = require( 'schemajs' )
+CommandResponse = require( '../../runtime/command-response' )
 
 ###*
 @module joukou-fbpp/protocols/base
@@ -27,24 +28,9 @@ class BaseProtocol
   filterCommands: null
   commands: null
 
-  @include: ( cls, obj ) ->
-    if not obj
-      throw new Error( "Include requires object" )
-
-    for key, value of obj::
-      if not obj::.hasOwnProperty( key )
-        contine
-      if key is 'include'
-        continue
-      if cls.hasOwnProperty( key )
-        continue
-      cls::[ key ] = value
-
-    cls
-
   constructor: ( @protocol, @context ) ->
-    @filterCommands = []
-    @commands = {}
+    @filterCommands = [ ]
+    @commands = { }
 
   getCommandKeys: ->
     return _.keys( @commands )
@@ -52,7 +38,7 @@ class BaseProtocol
   getHandler: ( command ) ->
     if typeof command isnt 'string'
       return
-    return @commands[ command.toLowerCase() ]
+    return @commands[ command.toLowerCase( ) ]
 
   addCommandSchemas: ( @commandSchemas ) ->
     @commandSchemasLower ?= {}
@@ -64,9 +50,9 @@ class BaseProtocol
   _resolvePromise: ( data ) ->
     deferred = Q.defer()
     if (
-      not data or
-      not data.then or
-      not data.fail
+      not data? or
+      not data.then? or
+      not data.fail?
     )
       return Q.resolve( data )
     data
@@ -74,14 +60,23 @@ class BaseProtocol
     .fail( deferred.reject )
     return deferred.promise
 
-  send: ( command, payload ) ->
-    if not @context or @context.socket
-      return
-    context.send({
-      protocol: @protocol
-      command: command.toLowerCase()
-      payload: payload
-    })
+  send: ( command, payload = undefined ) ->
+    if not @context?.socket
+      # Not an error, using API
+      # https://github.com/joukou/joukou-flow/issues/1
+      return Q.resolve( )
+    response = null
+    if command instanceof CommandResponse
+      response = command
+    else
+      response = new CommandResponse(
+        command.toLowerCase( ),
+        payload
+      )
+    unless response.hasProtocol( )
+      response.setProtocol( @protocol )
+
+    return @context.send( response )
 
   sendAll: ( command, payload ) ->
     if not @context or @context.socket
@@ -94,13 +89,26 @@ class BaseProtocol
 
   receive: ( command, payload ) ->
     deferred = Q.defer()
-    handler = @commands[command]
+    handler = @commands[ command ]
     if not handler
       return Q.reject( )
     try
-      promise = handler(payload, @context)
+      promise = handler( payload, @context )
       promise = @_resolvePromise( promise )
       promise
+      .then( ( data ) =>
+        # Resolve command response here to ensure it has a protocol
+        if data not instanceof CommandResponse
+          data = new CommandResponse(
+            command,
+            if data? then data else payload,
+            @protocol
+          )
+        else if not data.hasProtocol( )
+          # Don't set if there already is a protocol
+          data.setProtocol( @protocol )
+        return data
+      )
       .then( deferred.resolve )
       .fail( deferred.reject )
     catch e
@@ -133,7 +141,7 @@ class BaseProtocol
     handler.route = route
     handler.methods = methods
     handler.getSchema = ->
-      return @commandSchemasLower?[ name.toLowerCase() ]
+      return @commandSchemasLower?[ name.toLowerCase( ) ]
     handler.hasSchema = ->
       return !!handler.getSchema( )
     handler.validate = ( payload ) ->
@@ -141,7 +149,7 @@ class BaseProtocol
         return handler.$schema.validate(
           payload
         )
-      schema = @commandSchemasLower?[ name.toLowerCase() ]
+      schema = @commandSchemasLower?[ name.toLowerCase( ) ]
       if not schema
         return {
           valid: true,
@@ -157,7 +165,7 @@ class BaseProtocol
 
 
 
-    @commands[ name.toLowerCase() ] = handler
+    @commands[ name.toLowerCase( ) ] = handler
 
     if @[ name ]
       @[ name ] = handler

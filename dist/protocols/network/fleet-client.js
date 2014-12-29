@@ -14,21 +14,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
+var JoukouFleetAPIHost, JoukouFleetAPIPath, fleet;
 
-/**
-@module joukou-fbpp/index
-@author Fabian Cook <fabian.cook@joukou.com>
- */
+JoukouFleetAPIHost = process.env["JOUKOU_FLEET_API_HOST"];
 
-/**
-@typedef { object } Promise
-@property { function } then
-@property { function } fail
- */
-if (require.main === module) {
-  require('./server');
+JoukouFleetAPIPath = process.env["JOUKOU_FLEET_API_PATH"];
+
+if (!JoukouFleetAPIHost) {
+  JoukouFleetAPIHost = "http://localhost:4001";
+  process.env["JOUKOU_FLEET_API_HOST"] = JoukouFleetAPIHost;
 }
 
-module.exports = {
-  initialize: require('./initialize')
-};
+if (!JoukouFleetAPIPath) {
+  JoukouFleetAPIPath = "fleet/v1/";
+  process.env["JOUKOU_FLEET_API_PATH"] = JoukouFleetAPIPath;
+}
+
+fleet = require('joukou-conductor-fleet');
+
+module.exports = fleet.getClient(JoukouFleetAPIHost, JoukouFleetAPIPath, true);

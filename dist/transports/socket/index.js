@@ -34,8 +34,12 @@ SocketTransport = (function(_super) {
   function SocketTransport(server) {
     this.server = server;
     server.on('request', function(request) {
-      var client, connection, context;
-      connection = request.accept();
+      var client, connection, context, protocol;
+      protocol = void 0;
+      if (request.requestedProtocols.indexOf('noflo') !== -1) {
+        protocol = 'noflo';
+      }
+      connection = request.accept(protocol, request.origin);
       context = new RuntimeContext();
       context.socket = true;
       client = new SocketClient(connection, context, this);

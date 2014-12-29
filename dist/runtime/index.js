@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var ComponentLoader, GraphLoader, Q, RuntimeContext, authentication, env, jwt, models, pjson, protocols, uuid, _;
+var ComponentLoader, GraphLoader, NetworkLoader, Q, RuntimeContext, authentication, env, jwt, models, pjson, protocols, uuid, _;
 
 protocols = require('../protocols');
 
@@ -33,6 +33,8 @@ pjson = require('../../package.json');
 ComponentLoader = require('../protocols/component/loader');
 
 GraphLoader = require('../protocols/graph/loader');
+
+NetworkLoader = require('../protocols/network/loader');
 
 authentication = require('../authentication');
 
@@ -80,6 +82,10 @@ RuntimeContext = (function() {
 
   RuntimeContext.prototype.getGraphLoader = function() {
     return this.graphLoader != null ? this.graphLoader : this.graphLoader = new GraphLoader(this);
+  };
+
+  RuntimeContext.prototype.getNetworkLoader = function() {
+    return this.networkLoader != null ? this.networkLoader : this.networkLoader = new NetworkLoader(this, this.getGraphLoader());
   };
 
   RuntimeContext.prototype.getProtocols = function() {

@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var BaseProtocol, ComponentProtocol, NoFlo, Q, models, schema, _,
+var BaseProtocol, CommandResponse, ComponentProtocol, NoFlo, NonReturnResponse, Q, models, schema, _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -29,6 +29,10 @@ NoFlo = require('noflo');
 Q = require('q');
 
 schema = require('./schema');
+
+NonReturnResponse = require('../../runtime/non-return-response');
+
+CommandResponse = require('../../runtime/command-response');
 
 
 /**
@@ -94,7 +98,18 @@ ComponentProtocol = (function(_super) {
    */
 
   ComponentProtocol.prototype.list = function() {
-    return this.loader.listComponents();
+    var deferred;
+    deferred = Q.defer();
+    this.loader.listComponents().progress((function(_this) {
+      return function(component) {
+        var response;
+        response = new CommandResponse('component', component);
+        return _this.send(response);
+      };
+    })(this)).then(function() {
+      return deferred.resolve(new NonReturnResponse);
+    });
+    return deferred.promise;
   };
 
 

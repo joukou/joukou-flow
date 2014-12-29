@@ -13,19 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
+Network = require( './network' )
 
-###*
-@typedef { object } Promise
-@property { function } then
-@property { function } fail
-###
+class NetworkLoader
+  constructor: ( @context, @loader ) ->
+    @networks = { }
 
-if require.main is module
-  require( './server' )
+  fetchGraph: ( id ) ->
+    @loader.fetchGraph( id )
 
-module.exports =
-    initialize: require( './initialize' )
+  fetchNetwork: ( id ) ->
+    @fetchGraph( id )
+    .then( ( graph ) =>
+      return new Network( @context, graph )
+    )
+
+  save: ->
+    @loader.save( )
+
+
+module.exports = NetworkLoader

@@ -13,19 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-###*
-@module joukou-fbpp/index
-@author Fabian Cook <fabian.cook@joukou.com>
-###
+JoukouFleetAPIHost        = process.env["JOUKOU_FLEET_API_HOST"]
+JoukouFleetAPIPath        = process.env["JOUKOU_FLEET_API_PATH"]
 
-###*
-@typedef { object } Promise
-@property { function } then
-@property { function } fail
-###
+if not JoukouFleetAPIHost
+  JoukouFleetAPIHost = "http://localhost:4001"
+  process.env["JOUKOU_FLEET_API_HOST"] = JoukouFleetAPIHost
 
-if require.main is module
-  require( './server' )
+if not JoukouFleetAPIPath
+  JoukouFleetAPIPath = "fleet/v1/"
+  process.env["JOUKOU_FLEET_API_PATH"] = JoukouFleetAPIPath
 
-module.exports =
-    initialize: require( './initialize' )
+fleet = require( 'joukou-conductor-fleet' )
+
+#endpoint, basePath, doDiscovery
+
+module.exports = fleet.getClient(
+  JoukouFleetAPIHost,
+  JoukouFleetAPIPath,
+  yes
+)

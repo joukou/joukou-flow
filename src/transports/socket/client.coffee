@@ -13,8 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-MessageSchema = require( '../../message/schema' )
-BaseClient    = require( '../base/client' )
+MessageSchema        = require( '../../message/schema' )
+BaseClient           = require( '../base/client' )
+NonReturningResponse = require( '../../runtime/non-return-response' )
 
 class SocketClient extends BaseClient
   connected: yes
@@ -34,14 +35,20 @@ class SocketClient extends BaseClient
       data.payload
     )
     promise.then( ( payload ) =>
-      @send({
-        protocol: data.protocol,
-        command: data.command,
-        payload: if payload? then payload or data.payload
-      })
+      payload = @resolveCommandResponse( payload )
+      if payload instanceof NonReturningResponse
+        return
+      @send(
+        payload
+      )
     )
     .fail( ( err ) ->
       # TODO log errors
+      unless err
+        console.log(
+          "Error occurred in #{ data.protocol }/#{ data.command }"
+        )
+        return
       console.log(
         err, err && err.stack
       )

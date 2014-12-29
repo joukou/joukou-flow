@@ -22,6 +22,7 @@ uuid            = require( 'node-uuid' )
 pjson           = require( '../../package.json' )
 ComponentLoader = require( '../protocols/component/loader' )
 GraphLoader     = require( '../protocols/graph/loader' )
+NetworkLoader   = require( '../protocols/network/loader' )
 authentication  = require( '../authentication' )
 _               = require( 'lodash' )
 
@@ -59,6 +60,12 @@ class RuntimeContext
 
   getGraphLoader: ->
     return @graphLoader ?= new GraphLoader( @ )
+
+  getNetworkLoader: ->
+    return @networkLoader ?= new NetworkLoader(
+      @,
+      @getGraphLoader()
+    )
 
   getProtocols: ->
     @instances ?= {}

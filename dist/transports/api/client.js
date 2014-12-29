@@ -69,6 +69,7 @@ ApiClient = (function(_super) {
         }
         promise = context.receive(payload);
         return promise.then(function(resultPayload) {
+          resultPayload = _this.api.resolveCommandResponse(resultPayload);
           _this.results[_this.index] = {
             success: true,
             error: null,

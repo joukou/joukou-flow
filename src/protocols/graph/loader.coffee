@@ -17,11 +17,40 @@ Q          = require( 'q' )
 _          = require( 'lodash' )
 NoFlo      = require( 'noflo' )
 { models } = require( 'joukou-data' )
+validator  = require( 'validator' )
 
 class GraphLoader
 
   constructor: ( @context ) ->
     @graphs = { }
+    @graphHash = { }
+
+  _getGraphHash: ( value ) ->
+    # NoFlo graph overrides toJSON
+    value = {
+      properties: _.cloneDeep( value.properties ),
+      nodes: value.nodes,
+      edges: value.edges,
+      initializers: value.initializers,
+      exports: value.exports,
+      inports: value.inports,
+      outports: value.outports,
+      groups: value.groups
+    }
+    value.properties.metadata?.model = undefined
+    return @_getHash(
+      value
+    )
+
+  _getHash: (value) ->
+    value = JSON.stringify(value)
+    # Obtained from http://www.cse.yorku.ca/~oz/hash.html
+    hash = 0
+    i = 0
+    while i < value.length
+      hash = value.charCodeAt(i) + (hash << 6) + (hash << 16) - hash
+      i++
+    return hash
 
   fetchGraph: ( id ) ->
 
@@ -30,8 +59,17 @@ class GraphLoader
     if @graphs[ id ]
       return Q.resolve( @graphs[ id ] )
 
+    method = '_getModelByPublicKey'
+    # To long if using if/then/else. Meh
+    lower = id.toLowerCase( )
+    if lower.indexOf( 'private:' ) isnt -1
+      replaced = lower.replace( 'private:', '' )
+      if validator.isUUID( replaced )
+        id = replaced
+        method = '_getModelByPrivateKey'
+
     deferred = Q.defer()
-    @_getModelByPublicKey( id )
+    @[ method ]( id )
     .then( ( model ) =>
       value = model.getValue()
 
@@ -57,6 +95,8 @@ class GraphLoader
         )
 
         @graphs[ id ] = graph
+
+        @graphHash[ id ] = @_getGraphHash( graph )
 
         deferred.resolve( graph )
       )
@@ -96,22 +136,49 @@ class GraphLoader
 
     @graphs[ id ] = graph
 
+    # Don't add to graph hash as it is new
+
 
   _getModelByPublicKey: ( key ) ->
+    deferred = Q.defer()
+
     models.graph.elasticSearch(
       "public_key:#{key}",
       yes
     )
+    .then(
+      deferred.resolve
+    )
+    .fail( =>
+      @context.getPersonaKey( )
+      .then( ( persona_key ) ->
+        models.graph.create({
+          name: id
+          public_key: key,
+          personas: [
+            key: persona_key
+          ]
+        })
+        .then(
+          deferred.resolve
+        )
+        .fail(
+          deferred.reject
+        )
+      )
+
+    )
+    return deferred.promise
+
+  _getModelByPrivateKey: ( key ) ->
+    models.graph.retrieve( key )
 
   _getModel: ( public_key, graph ) ->
     deferred = Q.defer()
-    if graph.properties.metadata.model
-      process.nextTick( ->
-        deferred.resolve(
-          graph.properties.metadata.model
-        )
+    if graph.properties?.metadata?.model
+      return Q.resolve(
+        graph.properties.metadata.model
       )
-      return deferred.promise
     @_getModelByPublicKey(
       public_key
     )
@@ -305,6 +372,8 @@ class GraphLoader
       }
     )
 
+    ( properties.environment ?= { } ).type = "joukou-noflo"
+
     graph.setProperties(
       properties
     )
@@ -333,7 +402,7 @@ class GraphLoader
       graph.properties or {}
     )
 
-    graph.properties.metadata = metadata
+    value.properties.metadata = metadata
 
     value.inports = @_nofloExportedPortsToJoukou(
       graph.inports
@@ -379,7 +448,8 @@ class GraphLoader
     keys = _.where(
       _.keys( @graphs ),
       ( key ) =>
-        return @graphs[ key ].properties.metadata?.dirty
+        hash = @_getGraphHash( @graphs[ key ] )
+        return hash isnt @graphHash[ key ]
     )
     if not keys.length
       return Q.resolve( payload )
@@ -389,10 +459,13 @@ class GraphLoader
         graph = @graphs[ key ]
         @_getModel( key, graph, persona )
         .then( ( model ) =>
+          (graph.properties.metadata ?= {}).model = model
+          graph.properties.metadata.private_key = model.getKey()
           return @_saveWithModel( model, key, graph, persona )
         )
-        .then( ->
-          graph.properties?.metadata?.dirty = no
+        .then( =>
+          graph.properties.metadata?.dirty = no
+          @graphHash[ key ] = @_getGraphHash( graph )
         )
       )
       return Q.all(
@@ -404,10 +477,8 @@ class GraphLoader
         payload
       )
     )
-    .fail( ( err ) ->
-      deferred.reject(
-        err
-      )
+    .fail(
+      deferred.reject
     )
     #.fail( deferred.reject )
     return deferred.promise

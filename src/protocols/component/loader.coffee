@@ -18,15 +18,57 @@ _           = require( 'lodash' )
 { models }  = require( 'joukou-data' )
 NoFlo       = require( 'noflo' )
 
+componentToJSON = ( component ) ->
+  # Check http://noflojs.org/documentation/protocol/
+  # Component protocol - component
+  toPorts = ( ports ) ->
+    res = []
+    for key, port of ports
+      if not ports.hasOwnProperty( key )
+        continue
+      res.push({
+        id: key
+        type: port.getDataType( )
+        description: port.getDescription( )
+        addressable: port.isAddressable( )
+        required: port.isRequired( )
+        values: undefined # TODO
+        default: undefined # TODO
+      })
+    return res
+
+  return {
+    name: component.name
+    description: component.getDescription( )
+    icon: component.getIcon( )
+    subgraph: component.isSubgraph( )
+    inPorts: toPorts(
+      component.inPorts.ports
+    )
+    outPorts: toPorts(
+      component.outPorts.ports
+    )
+  }
+
 class ComponentLoader
   constructor: ( @context ) ->
 
   getComponent: ( name ) ->
     unless typeof name is 'string'
-      return undefined
+      return Q.reject( 'Name is required' )
+    @context.getPersonas()
+    .then( ( personas ) ->
+      models.circle.getByFullName(
+        name,
+        personas
+      )
+    )
+
+  getComponentForCircle: ( circle ) ->
+    return (@components ?= {})[ circle.getKey() ] ?= @_toComponent( circle )
 
   _toComponent: ( circle ) ->
-    value = circle.getValue()
+    value = circle.getValue( )
 
     options = {
       inPorts: new NoFlo.InPorts( )
@@ -55,6 +97,18 @@ class ComponentLoader
         }
       )
 
+    if not NoFlo.Component.prototype.toJSON
+      NoFlo.Component.prototype.toJSON = ->
+        componentToJSON( @ )
+
+    if not NoFlo.Component.prototype.getName
+      NoFlo.Component.prototype.getName = ->
+        return @name
+
+    if not NoFlo.Component.prototype.setName
+      NoFlo.Component.prototype.setName = ( name ) ->
+        return @name = name
+
     # TODO add Joukou Component
     component = new NoFlo.Component(
       options
@@ -68,7 +122,7 @@ class ComponentLoader
       )
         continue
       port.name = key
-      port.node = circle.getKey()
+      port.node = circle.getKey( )
 
     for key, port of component.outPorts.ports
       if not component.outPorts.ports.hasOwnProperty(
@@ -76,17 +130,19 @@ class ComponentLoader
       )
         continue
       port.name = key
-      port.node = circle.getKey()
+      port.node = circle.getKey( )
 
     component.description = value.description
 
     component.setIcon( value.icon )
 
+    component.setName( value.name )
+
     return component
 
   _loadComponents: ->
-    deferred = Q.defer()
-    @context.getPersonas()
+    deferred = Q.defer( )
+    @context.getPersonas( )
     .then( ( personas ) =>
       keys = _.map( personas, ( persona ) ->
         return persona.key
@@ -96,39 +152,12 @@ class ComponentLoader
       )
       .then( ( circles ) =>
         result = _.map( circles, ( circle ) =>
-
-          component = @_toComponent( circle )
-
-          toPorts = ( ports ) ->
-            res = []
-            for key, port of ports
-              if not ports.hasOwnProperty( key )
-                continue
-              res.push({
-                id: port.getId(),
-                type: port.getDataType(),
-                description: port.getDescription(),
-                addressable: port.isAddressable(),
-                required: port.isRequired(),
-                values: undefined, # TODO
-                default: undefined # TODO
-              })
-            return res
-
-          return (@components ?= {})[ circle.getKey() ] = {
-            name: circle.getKey(),
-            description: component.getDescription(),
-            icon: component.getIcon(),
-            subgraph: component.isSubgraph(),
-            inPorts: toPorts(
-              component.inPorts.ports
-            ),
-            outPorts: toPorts(
-              component.outPorts.ports
-            )
-          }
+          component = @getComponentForCircle( circle )
+          deferred.notify(
+            component
+          )
+          return component
         )
-
         deferred.resolve(
           result
         )
@@ -139,12 +168,13 @@ class ComponentLoader
     return deferred.promise
 
   listComponents: ->
-    if @components
-      return Q.resolve(
-        _.values(
-          @components
-        )
-      )
+    # Load every time
+    #if @components
+    #  return Q.resolve(
+    #    _.values(
+    #      @components
+    #    )
+    #  )
     return @_loadComponents()
 
 module.exports = ComponentLoader

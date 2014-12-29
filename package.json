@@ -19,8 +19,10 @@
   "homepage": "https://github.com/joukou/joukou-fbpp",
   "dependencies": {
     "bunyan": "^1.2.3",
-    "joukou-data": "git://github.com/joukou/joukou-data.git#develop",
-    "joukou-conductor-rabbitmq": "git://github.com/joukou/joukou-conductor-rabbitmq.git#v0.0.5",
+    "flowhub-registry": "0.0.2",
+    "joukou-conductor-fleet": "git://github.com/joukou/joukou-conductor-fleet.git#v0.0.1",
+    "joukou-conductor-rabbitmq": "git://github.com/joukou/joukou-conductor-rabbitmq.git#v0.0.7",
+    "joukou-data": "file:../../../../../var/folders/0t/d01npbkd3936q93wy224swfm0000gn/T/npm-55477-b464e564/1419734712210-0.9139792567584664/c90cce9df1fbefbe99c43d7cb27068f021570176",
     "jsonwebtoken": "^1.2.0",
     "lodash": "^2.4.1",
     "node-uuid": "^1.4.2",
@@ -28,10 +30,13 @@
     "noflo-runtime-base": "^0.2.16",
     "passport": "^0.2.1",
     "passport-http-bearer": "^1.0.1",
+    "pem": "^1.4.4",
     "q": "1.0.1",
     "restify": "^2.8.3",
     "restify-cors-middleware": "0.0.4",
+    "restify-https": "0.0.3",
     "schemajs": "^0.1.11",
+    "validator": "^3.26.0",
     "websocket": "^1.0.14"
   },
   "devDependencies": {
