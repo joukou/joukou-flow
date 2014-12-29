@@ -77,6 +77,7 @@ class ComponentProtocol extends BaseProtocol
   ###
   list: ->
     deferred = Q.defer()
+
     @loader
     .listComponents( )
     .progress( ( component ) =>
@@ -93,7 +94,6 @@ class ComponentProtocol extends BaseProtocol
         new NonReturnResponse
       )
     )
-
 
     return deferred.promise
 
@@ -116,7 +116,7 @@ class ComponentProtocol extends BaseProtocol
   @param { getSourcePayload } payload
   @returns { source | Promise }
   ###
-  #getSource: ( payload ) ->
+  # getSource: ( payload ) ->
 
 
 

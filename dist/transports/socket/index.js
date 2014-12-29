@@ -42,7 +42,7 @@ SocketTransport = (function(_super) {
       connection = request.accept(protocol, request.origin);
       context = new RuntimeContext();
       context.socket = true;
-      client = new SocketClient(connection, context, this);
+      client = new SocketClient(this, connection, context);
       connection.on('message', function(message) {
         var data, utf8;
         utf8 = "";

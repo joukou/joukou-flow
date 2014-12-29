@@ -13,20 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ###
-CommandResponse = require( '../../runtime/command-response' )
 
 class BaseClient
-  constructor: ( @context ) ->
+  constructor: ( @transport, @context ) ->
 
   resolveCommandResponse: ( response ) ->
-    if response instanceof CommandResponse
-      return response
-    return new CommandResponse(
-      response.command,
-      response.payload,
-      response.protocol
+    return @transport.resolveCommandResponse(
+      response,
+      @context
     )
-
-
 
 module.exports = BaseClient

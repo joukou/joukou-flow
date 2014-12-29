@@ -25,14 +25,14 @@ class PayloadClient
   registerRoutes: ->
 
     @server.put(
-      "#{@api.routePrefix}/payload/authenticated",
-      authentication.authenticate,
-      @runPayload
+      "#{@api.routePrefix}/payload/unauthenticated",
+      @runPayload.bind( @ )
     )
 
     @server.put(
       "#{@api.routePrefix}/payload/",
-      @runPayload
+      authentication.authenticate,
+      @runPayload.bind( @ )
     )
 
 

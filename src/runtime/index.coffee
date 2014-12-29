@@ -31,7 +31,6 @@ class RuntimeContext
   authorized: no
   persona: null
   user: null
-  secret: null
   context: null
   type: 'joukou-flow'
   version: pjson.version
@@ -47,6 +46,7 @@ class RuntimeContext
   id: uuid.v4()
   label: 'Joukou Flow'
   graph: null
+  _sendQueue: [ ]
 
   options: null
 
@@ -54,6 +54,8 @@ class RuntimeContext
   @constructor RuntimeContext
   ###
   constructor: ( @options = {} ) ->
+    @context = this # backwards
+    @_sendQueue = [ ]
 
   getComponentLoader: ->
     return @componentLoader ?= new ComponentLoader( @ )
@@ -158,8 +160,18 @@ class RuntimeContext
       return Q.reject( 'Unauthorized' )
     return instance.receive( command, payload, @ )
 
-  send: ->
-    throw new Error( "Not Implemented" )
+  send: ( data ) ->
+    # Transport should override this.
+    # If it doesn't, add them to a "queue"
+    @_sendQueue.push(
+      data
+    )
+
+  getSendQueue: ->
+    return @_sendQueue
+
+  clearSendQueue: ->
+    @_sendQueue = [ ]
 
   sendAll: ->
     throw new Error( "Not Implemented" )

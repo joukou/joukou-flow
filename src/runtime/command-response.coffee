@@ -26,6 +26,11 @@ class CommandResponse
 
   setProtocol: ( @protocol ) ->
 
+  setSendQueue: ( @sendQueue ) ->
+
+  getSendQueue: ->
+    return @sendQueue
+
   getCommand: ->
     return @command
 
@@ -33,10 +38,14 @@ class CommandResponse
     return @payload
 
   toJSON: ->
-    return {
+    res = {
       protocol: @getProtocol( )
       command: @getCommand( )
       payload: @getPayload( )
     }
+    queue = @getSendQueue( )
+    if queue?
+      res.queue = queue
+    return res
 
 module.exports = CommandResponse

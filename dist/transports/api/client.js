@@ -32,12 +32,14 @@ ApiClient = (function(_super) {
     this.next = next;
     this.api = api;
     this.context = context;
+    ApiClient.__super__.constructor.call(this, this.api, this.context);
     this.payloads = ((_ref = req.body) != null ? _ref.payloads : void 0) || [];
     this.results = [];
     if (req.user) {
       context.user = req.user;
       context.authorized = true;
     }
+    this.runPayloads();
   }
 
   ApiClient.prototype.runPayloads = function() {
@@ -67,9 +69,9 @@ ApiClient = (function(_super) {
           };
           return _this.complete();
         }
-        promise = context.receive(payload);
+        promise = _this.context.receive(payload.protocol, payload.command, payload.payload);
         return promise.then(function(resultPayload) {
-          resultPayload = _this.api.resolveCommandResponse(resultPayload);
+          resultPayload = _this.resolveCommandResponse(resultPayload);
           _this.results[_this.index] = {
             success: true,
             error: null,
@@ -79,6 +81,12 @@ ApiClient = (function(_super) {
           };
           return next();
         }).fail(function(err) {
+          if (err instanceof Error) {
+            err = {
+              message: err.message,
+              stack: err.stack
+            };
+          }
           _this.results[_this.index] = {
             success: false,
             error: err,
@@ -94,7 +102,7 @@ ApiClient = (function(_super) {
   };
 
   ApiClient.prototype.complete = function() {
-    var i, index, response, result, _i, _len, _ref, _results;
+    var i, index, response, result, _i, _len, _ref;
     response = {
       result: [],
       payloads: [],
@@ -107,13 +115,13 @@ ApiClient = (function(_super) {
       response.result.push(result);
       if (result.success) {
         this.completedUpTo = index;
-        response.payload.push(result.payload);
+        response.payloads.push(result.payload);
       }
     }
-    response.success = this.completedUpTo === this.payloads.length;
+    response.success = this.completedUpTo + 1 === this.payloads.length;
+    response.completed = this.completedUpTo + 1;
     if (!response.success) {
-      i = this.completedUpTo;
-      _results = [];
+      i = this.completedUpTo + 1;
       while (i < this.payloads.length) {
         if (this.results[i]) {
           i++;
@@ -126,10 +134,10 @@ ApiClient = (function(_super) {
           requestPayload: this.payloads[i],
           run: false
         });
-        _results.push(i++);
+        i++;
       }
-      return _results;
     }
+    return this.res.send(200, response);
   };
 
   return ApiClient;

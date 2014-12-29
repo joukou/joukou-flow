@@ -33,10 +33,11 @@ SocketClient = (function(_super) {
 
   SocketClient.prototype.connection = null;
 
-  function SocketClient(connection, context) {
+  function SocketClient(transport, connection, context) {
+    this.transport = transport;
     this.connection = connection;
     this.context = context;
-    SocketClient.__super__.constructor.call(this, this.context);
+    SocketClient.__super__.constructor.call(this, this.transport, this.context);
     this.context.send = this.send.bind(this);
     this.context.sendAll = this.sendAll.bind(this);
   }

@@ -30,8 +30,8 @@ PayloadClient = (function() {
   }
 
   PayloadClient.prototype.registerRoutes = function() {
-    this.server.put("" + this.api.routePrefix + "/payload/authenticated", authentication.authenticate, this.runPayload);
-    return this.server.put("" + this.api.routePrefix + "/payload/", this.runPayload);
+    this.server.put("" + this.api.routePrefix + "/payload/unauthenticated", this.runPayload.bind(this));
+    return this.server.put("" + this.api.routePrefix + "/payload/", authentication.authenticate, this.runPayload.bind(this));
   };
 
   PayloadClient.prototype.runPayload = function(req, res, next) {

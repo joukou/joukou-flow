@@ -20,6 +20,7 @@ RuntimeContext      = require( '../../runtime' )
 DocumentationClient = require( './documentation' )
 PayloadClient       = require( './payload' )
 _                   = require( 'lodash' )
+NonReturnResponse   = require( '../../runtime/non-return-response' )
 
 class ApiTransport extends BaseTransport
   constructor: ( @server, @routePrefix = '' ) ->
@@ -113,6 +114,38 @@ class ApiTransport extends BaseTransport
       addHandler( 'POST' )
       addHandler( 'GET' )
 
+  processCommandResponseQueue: ( response ) ->
+
+    queue = response.getSendQueue( )
+
+    unless queue?.length
+      return response.getPayload( )
+
+    unless response instanceof NonReturnResponse
+      # Only return only queue if the actual command
+      # Has no response
+      return {
+        payload: response.getPayload( )
+        queue: queue
+      }
+
+    command = queue[ 0 ].getCommand( )
+    protocol = queue[ 0 ].getProtocol( )
+
+    # An example of where this would be used is the component protocol
+    # Where it sends component messages
+    if _.every( queue, ( res ) ->
+      return (
+        res.getCommand( ) is command and
+        res.getProtocol( ) is protocol
+      )
+    )
+      return _.map( queue, ( res ) ->
+        return res.getPayload( )
+      )
+
+    return queue
+
 
   route: ( key, command ) ->
     return ( req, res, next ) =>
@@ -121,6 +154,7 @@ class ApiTransport extends BaseTransport
 
       context.user = req.user
       context.authorized = yes
+
       protocol = context.getProtocol( key )
 
       payload = _.cloneDeep(
@@ -141,10 +175,11 @@ class ApiTransport extends BaseTransport
 
       promise
       .then( ( payload ) =>
-        payload = @resolveCommandResponse( payload )
+        payload = @resolveCommandResponse( payload, context )
+        response = @processCommandResponseQueue( payload )
         res.send(
           200,
-          payload.getPayload( )
+          response
         )
       )
       .fail( ( err ) ->

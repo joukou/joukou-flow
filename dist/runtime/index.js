@@ -49,8 +49,6 @@ RuntimeContext = (function() {
 
   RuntimeContext.prototype.user = null;
 
-  RuntimeContext.prototype.secret = null;
-
   RuntimeContext.prototype.context = null;
 
   RuntimeContext.prototype.type = 'joukou-flow';
@@ -65,6 +63,8 @@ RuntimeContext = (function() {
 
   RuntimeContext.prototype.graph = null;
 
+  RuntimeContext.prototype._sendQueue = [];
+
   RuntimeContext.prototype.options = null;
 
 
@@ -74,6 +74,8 @@ RuntimeContext = (function() {
 
   function RuntimeContext(options) {
     this.options = options != null ? options : {};
+    this.context = this;
+    this._sendQueue = [];
   }
 
   RuntimeContext.prototype.getComponentLoader = function() {
@@ -205,8 +207,16 @@ RuntimeContext = (function() {
     return instance.receive(command, payload, this);
   };
 
-  RuntimeContext.prototype.send = function() {
-    throw new Error("Not Implemented");
+  RuntimeContext.prototype.send = function(data) {
+    return this._sendQueue.push(data);
+  };
+
+  RuntimeContext.prototype.getSendQueue = function() {
+    return this._sendQueue;
+  };
+
+  RuntimeContext.prototype.clearSendQueue = function() {
+    return this._sendQueue = [];
   };
 
   RuntimeContext.prototype.sendAll = function() {
