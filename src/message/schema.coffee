@@ -21,5 +21,5 @@ module.exports = schemajs.create(
   command:
     type: 'string'
   payload:
-    type: 'string'
+    type: 'object'
 )

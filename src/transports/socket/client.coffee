@@ -27,7 +27,8 @@ class SocketClient extends BaseClient
     @context.sendAll = @sendAll.bind( @ )
   receive: ( data ) ->
     # Forget about it
-    if not MessageSchema.validate( data )
+    form = MessageSchema.validate( data )
+    if not form.valid
       return
     promise = @context.receive(
       data.protocol,
