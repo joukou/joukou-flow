@@ -1,6 +1,6 @@
 {
   "name": "joukou-fbpp",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Joukou implementation of the Flow-Based Programming network protocol (FBP protocol) based on WebSockets.",
   "main": "dist/server.js",
   "scripts": {
